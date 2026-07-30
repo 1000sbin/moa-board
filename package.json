@@ -1,0 +1,60 @@
+{
+  "name": "moaboard",
+  "version": "0.1.0",
+  "description": "모아보드 — 윈도우 작업 대시보드 (워크 트래커 자동 감지)",
+  "main": "src/main/main.js",
+  "author": "Moa",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "electron-builder --win",
+    "dist:portable": "electron-builder --win portable",
+    "release": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "active-win": "^8.2.1",
+    "electron-updater": "^6.3.9"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.moa.board",
+    "productName": "모아보드",
+    "npmRebuild": false,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "1000sbin",
+        "repo": "moa-board"
+      }
+    ],
+    "files": [
+      "src/**/*",
+      "!**/*.md"
+    ],
+    "asarUnpack": [
+      "**/node_modules/active-win/**"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "src/renderer/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "모아보드"
+    }
+  }
+}

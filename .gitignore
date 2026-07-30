@@ -1,0 +1,26 @@
+# 의존성 (npm install로 각자 받음)
+node_modules/
+
+# 빌드 결과물 (릴리스로 배포)
+dist/
+build/
+out/
+
+# 로그
+*.log
+npm-debug.log*
+
+# 로컬 DB (사용자 데이터 — 올리면 안 됨)
+*.db
+*.db-shm
+*.db-wal
+
+# OS/에디터
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 환경변수/토큰 (절대 올리면 안 됨!)
+.env
+*.local
