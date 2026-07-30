@@ -1,0 +1,33 @@
+name: Build & Release
+
+# v로 시작하는 태그(v0.1.0 등)를 올리면 자동 실행
+on:
+  push:
+    tags:
+      - 'v*'
+
+# 릴리스를 만들려면 쓰기 권한 필요
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest   # 윈도우 앱이라 윈도우에서 빌드
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 의존성 설치
+        run: npm install
+
+      - name: 빌드 + 깃허브 릴리스 업로드
+        run: npm run release
+        env:
+          # 깃허브가 자동으로 넣어주는 토큰 (따로 만들 필요 없음)
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
