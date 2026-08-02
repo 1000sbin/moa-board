@@ -223,18 +223,48 @@ function registerIpc() {
   ipcMain.handle('rules:delete', (_e, id) => D().prepare('DELETE FROM app_rule WHERE id=?').run(id).changes);
 
   // 할 일
-  ipcMain.handle('todo:list', () =>
-    D().prepare('SELECT * FROM todo ORDER BY done, sort_order, id').all());
+  ipcMain.handle('todo:list', () => {
+    // 미완료 전부 + 완료된 것 중 '오늘 완료'만 표시
+    const rows = D().prepare(`
+      SELECT * FROM todo
+      WHERE done = 0
+         OR (done = 1 AND date(done_at, 'localtime') = date('now','localtime'))
+      ORDER BY done, sort_order, id
+    `).all();
+    const today = new Date().toLocaleDateString('sv'); // YYYY-MM-DD
+    return rows.map(t => {
+      // 이월: 미완료인데 만든 날짜가 오늘보다 이전
+      const created = (t.created_at || '').slice(0, 10);
+      const carried = !t.done && created && created < today;
+      return { ...t, carried };
+    });
+  });
   ipcMain.handle('todo:add', (_e, t) =>
     D().prepare('INSERT INTO todo (title,category,due_date) VALUES (?,?,?)')
        .run(t.title, t.category || null, t.due_date || null).lastInsertRowid);
-  ipcMain.handle('todo:toggle', (_e, id) =>
-    D().prepare('UPDATE todo SET done = 1 - done WHERE id=?').run(id).changes);
+  ipcMain.handle('todo:toggle', (_e, id) => {
+    const cur = D().prepare('SELECT done FROM todo WHERE id=?').get(id);
+    if (!cur) return 0;
+    if (cur.done) {
+      // 완료 → 미완료: done_at 지움
+      return D().prepare('UPDATE todo SET done=0, done_at=NULL WHERE id=?').run(id).changes;
+    } else {
+      // 미완료 → 완료: 완료 시각 기록
+      return D().prepare("UPDATE todo SET done=1, done_at=datetime('now','localtime') WHERE id=?").run(id).changes;
+    }
+  });
   ipcMain.handle('todo:update', (_e, t) =>
     D().prepare('UPDATE todo SET title=?, category=? WHERE id=?')
        .run(t.title, t.category || null, t.id).changes);
   ipcMain.handle('todo:delete', (_e, id) =>
     D().prepare('DELETE FROM todo WHERE id=?').run(id).changes);
+  // 특정 날짜(YYYY-MM-DD)에 완료한 할 일 목록
+  ipcMain.handle('todo:doneOn', (_e, ymd) =>
+    D().prepare(`
+      SELECT * FROM todo
+      WHERE done=1 AND date(done_at,'localtime') = ?
+      ORDER BY done_at
+    `).all(ymd));
 
   // 일정 / D-day
   ipcMain.handle('event:list', (_e, month) => {
@@ -309,7 +339,8 @@ function registerIpc() {
   ipcMain.handle('mgoal:delete', (_e, id) => D().prepare('DELETE FROM month_goal WHERE id=?').run(id).changes);
 
   // 메모
-  ipcMain.handle('memo:list', () => D().prepare('SELECT * FROM memo ORDER BY updated_at DESC').all());
+  ipcMain.handle('memo:list', () => D().prepare('SELECT * FROM memo WHERE COALESCE(archived,0)=0 ORDER BY updated_at DESC').all());
+  ipcMain.handle('memo:listArchived', () => D().prepare('SELECT * FROM memo WHERE archived=1 ORDER BY updated_at DESC').all());
   ipcMain.handle('memo:save', (_e, m) => {
     if (m.id) {
       D().prepare("UPDATE memo SET title=?,body=?,tag=?,updated_at=datetime('now','localtime') WHERE id=?")
@@ -319,6 +350,9 @@ function registerIpc() {
     return D().prepare('INSERT INTO memo (title,body,tag) VALUES (?,?,?)')
               .run(m.title, m.body, m.tag).lastInsertRowid;
   });
+  // 보관/복원 토글 (archived 0<->1)
+  ipcMain.handle('memo:archive', (_e, { id, archived }) =>
+    D().prepare('UPDATE memo SET archived=? WHERE id=?').run(archived ? 1 : 0, id).changes);
   ipcMain.handle('memo:delete', (_e, id) => D().prepare('DELETE FROM memo WHERE id=?').run(id).changes);
 
   // 연간 목표 (진행률 = 마일스톤 완료율 자동)

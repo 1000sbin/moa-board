@@ -14,8 +14,27 @@ function init(userDataPath) {
   db = new DatabaseSync(dbPath);
   db.exec('PRAGMA journal_mode = WAL'); // 성능 + 안정성
   createTables();
+  migrate();
   seedDefaults();
   return db;
+}
+
+// 기존 사용자 DB에 새 컬럼 등을 안전하게 추가
+function migrate() {
+  // memo.archived (보관 기능) — 없으면 추가
+  try {
+    const cols = db.prepare("PRAGMA table_info(memo)").all();
+    if (!cols.some(c => c.name === 'archived')) {
+      db.exec("ALTER TABLE memo ADD COLUMN archived INTEGER DEFAULT 0");
+    }
+  } catch (_) {}
+  // todo.done_at (완료 시각 — 이월/완료 표시용) — 없으면 추가
+  try {
+    const cols = db.prepare("PRAGMA table_info(todo)").all();
+    if (!cols.some(c => c.name === 'done_at')) {
+      db.exec("ALTER TABLE todo ADD COLUMN done_at TEXT");
+    }
+  } catch (_) {}
 }
 
 function createTables() {
@@ -47,6 +66,7 @@ function createTables() {
       title         TEXT NOT NULL,
       category      TEXT,
       done          INTEGER DEFAULT 0,
+      done_at       TEXT,              -- 완료 시각 (YYYY-MM-DD HH:MM:SS)
       due_date      TEXT,              -- YYYY-MM-DD (선택)
       sort_order    INTEGER DEFAULT 0,
       created_at    TEXT DEFAULT (datetime('now','localtime'))
@@ -85,6 +105,7 @@ function createTables() {
       title         TEXT,
       body          TEXT,
       tag           TEXT,
+      archived      INTEGER DEFAULT 0,
       updated_at    TEXT DEFAULT (datetime('now','localtime'))
     );
 

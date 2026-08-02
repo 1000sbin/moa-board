@@ -49,8 +49,10 @@ function matchCategory(win) {
       return { category: r.category, icon: r.icon, appName: procBase || title };
     }
   }
-  console.log(`[detect:unmapped] proc="${procBase}" title="${title}" -> etc`);
-  return { category: '기타', icon: 'apps', appName: procBase || title || '알 수 없음' };
+  // 규칙에 없는 프로그램은 측정하지 않음 (null 반환)
+  // seenApps에는 이미 기록됐으니 규칙 편집에서 추가 가능
+  console.log(`[detect:unmapped] proc="${procBase}" -> 측정 안 함`);
+  return null;
 }
 
 function startSession(match) {
@@ -105,7 +107,10 @@ async function tick(onUpdate) {
     const win = await aw();
     const match = matchCategory(win);
 
-    if (!current) {
+    if (!match) {
+      // 규칙에 없는 프로그램 → 측정 중지 (현재 세션 닫고 새로 안 만듦)
+      endSession();
+    } else if (!current) {
       startSession(match);
     } else if (match.category !== current.category) {
       // 카테고리 바뀌면 이전 세션 닫고 새 세션

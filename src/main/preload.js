@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('moa', {
     toggle: (id) => ipcRenderer.invoke('todo:toggle', id),
     update: (t) => ipcRenderer.invoke('todo:update', t),
     remove: (id) => ipcRenderer.invoke('todo:delete', id),
+    doneOn: (ymd) => ipcRenderer.invoke('todo:doneOn', ymd),
   },
 
   // 일정
@@ -61,7 +62,9 @@ contextBridge.exposeInMainWorld('moa', {
   // 메모
   memo: {
     list: () => ipcRenderer.invoke('memo:list'),
+    listArchived: () => ipcRenderer.invoke('memo:listArchived'),
     save: (m) => ipcRenderer.invoke('memo:save', m),
+    archive: (id, archived) => ipcRenderer.invoke('memo:archive', { id, archived }),
     remove: (id) => ipcRenderer.invoke('memo:delete', id),
   },
 

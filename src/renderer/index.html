@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"/>
 <style>
   :root{
-    /* 모노크로매틱 + 포인트 1색 */
+    /* 기본: 라이트 모드 배경/글자 */
     --bg:#f7f7f8;
     --surface:#ffffff;
     --surface-2:#fafafb;
@@ -18,7 +18,8 @@
     --ink-4:#c4c4cb;
     --line:#ececed;
     --line-2:#f4f4f5;
-    --point:#ff4d8d;      /* 딸기 포인트 */
+    /* 포인트 컬러 (기본 딸기) — 모드와 무관하게 덮어씀 */
+    --point:#ff4d8d;
     --point-soft:#ffe7ef;
     --point-dim:#fff2f6;
     --r:13px;
@@ -26,14 +27,13 @@
     --r-sm:9px;
     --font:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
   }
-  body[data-theme="night"]{
+  /* ── 다크 모드: 배경/글자만 바꿈 (포인트 컬러는 유지) ── */
+  body[data-mode="dark"]{
     --bg:#0e0e11;--surface:#17171b;--surface-2:#1c1c21;
     --ink:#f2f2f4;--ink-2:#a0a0a8;--ink-3:#6e6e77;--ink-4:#4a4a52;
-    --line:#26262c;--line-2:#202025;--point:#ff4d8d;--point-soft:#3a1f2a;--point-dim:#241820;
+    --line:#26262c;--line-2:#202025;
   }
-  body[data-theme="blue"]{--point:#3d7bff;--point-soft:#e6efff;--point-dim:#f2f7ff}
-  body[data-theme="violet"]{--point:#8b5cf6;--point-soft:#efe9ff;--point-dim:#f6f3ff}
-  body[data-theme="emerald"]{--point:#10b981;--point-soft:#d9f6ec;--point-dim:#eefbf5}
+  /* 다크 모드에선 point-soft/dim을 어둡게 자동 조정 (JS가 색상 넣어줌) */
 
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:var(--font);background:var(--bg);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;font-size:13px;letter-spacing:-0.01em;transition:background .3s,color .3s}
@@ -71,10 +71,17 @@
   .milk-mini .mm-sub{font-size:10px;color:var(--ink-3);margin-top:7px}
 
   .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px;padding-top:12px}
+  .mode-toggle{display:flex;gap:5px;margin-bottom:12px}
+  .mode-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 6px;border:1px solid var(--line);border-radius:8px;background:none;color:var(--ink-3);font-family:var(--font);font-size:11px;font-weight:500;cursor:pointer;transition:.12s}
+  .mode-btn .mi{font-size:15px}
+  .mode-btn:hover{border-color:var(--ink-4);color:var(--ink-2)}
+  .mode-btn.on{background:var(--point-soft);border-color:var(--point);color:var(--point);font-weight:600}
+  .color-label{font-size:10px;font-weight:600;color:var(--ink-4);letter-spacing:0.04em;text-transform:uppercase;padding:0 2px 7px}
   .theme-pick{display:flex;gap:8px;justify-content:center}
   .theme-pick i{width:15px;height:15px;border-radius:50%;cursor:pointer;transition:transform .15s;border:1.5px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
   .theme-pick i:hover{transform:scale(1.15)}
-  .th-straw{background:#ff4d8d}.th-blue{background:#3d7bff}.th-violet{background:#8b5cf6}.th-emerald{background:#10b981}.th-night{background:#26262c}
+  .theme-pick i.on{box-shadow:0 0 0 2px var(--point);transform:scale(1.1)}
+  .th-straw{background:#ff4d8d}.th-blue{background:#3d7bff}.th-violet{background:#8b5cf6}.th-emerald{background:#10b981}.th-amber{background:#f5a623}
   .th-custom{width:15px;height:15px;border-radius:50%;cursor:pointer;border:1.5px solid var(--surface);box-shadow:0 0 0 1px var(--line);background:conic-gradient(from 0deg,#ff4d8d,#ffb84d,#5dd68a,#3d7bff,#8b5cf6,#ff4d8d);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:transform .15s}
   .th-custom:hover{transform:scale(1.15)}
   .th-custom .mi{font-size:9px;color:#fff;mix-blend-mode:difference}
@@ -121,11 +128,13 @@
   .cal-h .arw .mi{font-size:17px}
   .bcal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
   .bcal .dow{font-size:10px;color:var(--ink-4);font-weight:500;text-align:center;padding-bottom:5px}
-  .bcal .bd{min-height:50px;border-radius:8px;padding:5px 6px;font-size:11px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:.12s;color:var(--ink-2)}
+  .bcal .bd{height:62px;min-height:62px;box-sizing:border-box;border-radius:8px;padding:5px 6px;font-size:11px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:.12s;color:var(--ink-2);overflow:hidden}
+  .bcal .bd .bd-num{flex:0 0 auto}
+  .bcal .bd .bd-evs{display:flex;flex-direction:column;gap:2px;overflow:hidden;min-height:0}
   .bcal .bd:hover{background:var(--surface-2)}
   .bcal .bd.out{color:var(--ink-4)}
   .bcal .bd.today{background:var(--point);color:#fff;font-weight:700}
-  .bcal .bd .ev{font-size:8px;padding:2px 5px;border-radius:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--surface-2);color:var(--ink-2);border-left:2px solid var(--ink-4)}
+  .bcal .bd .ev{font-size:8px;padding:2px 5px;border-radius:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--surface-2);color:var(--ink-2);border-left:2px solid var(--ink-4);max-width:100%;box-sizing:border-box}
   .bcal .bd .ev-more{font-size:7.5px;color:var(--ink-4);font-weight:600;padding-left:3px;margin-top:1px}
   .bcal .bd .ev.comm{border-left-color:var(--point)}
   .bcal .bd .ev.code{border-left-color:var(--ink)}
@@ -161,7 +170,9 @@
   .ti .bx .mi{font-size:12px;color:#fff;opacity:0}
   .ti.done .bx{background:var(--point);border-color:var(--point)}.ti.done .bx .mi{opacity:1}
   .ti span{font-weight:450}
-  .ti.done span{color:var(--ink-3);text-decoration:line-through}
+  .ti.done span{color:var(--ink-3)}
+  .ti .t-carry{font-size:9px;padding:2px 6px;border-radius:5px;font-weight:600;color:var(--point);background:var(--point-soft);flex:0 0 auto;white-space:nowrap;display:inline-flex;align-items:center;gap:2px}
+  .ti .t-carry .mi{font-size:11px}
   .ti .t-tag{font-size:9.5px;padding:2px 7px;border-radius:5px;font-weight:500;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);flex:0 0 auto;width:52px;text-align:center;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .t-tag-empty{flex:0 0 auto;width:52px}
   /* 공통 행 액션 버튼 (수정/삭제) */
@@ -339,6 +350,24 @@
   .memo-note .mn-body{font-size:11px;line-height:1.6;color:var(--ink-2)}
   .memo-note .mn-body ul{margin:3px 0 0 0;padding-left:15px}
   .memo-note .mn-foot{margin-top:11px;display:flex;align-items:center;gap:7px;font-size:9.5px;color:var(--ink-4)}
+  /* 메모 보관 버튼 */
+  .memo-note .mn-arch{position:absolute;top:10px;right:10px;width:24px;height:24px;border:none;background:none;border-radius:6px;color:var(--ink-4);cursor:pointer;opacity:0;display:flex;align-items:center;justify-content:center;transition:.12s}
+  .memo-note:hover .mn-arch{opacity:1}
+  .memo-note .mn-arch:hover{background:var(--point-soft);color:var(--point)}
+  .memo-note .mn-arch .mi{font-size:15px}
+  .memo-note .mn-arch.restore:hover{background:var(--point-soft);color:var(--point)}
+  .memo-note .mn-title{padding-right:26px}
+  .memo-note.archived{opacity:.72}
+  .memo-note.archived:hover{opacity:1}
+  /* 보관함 섹션 */
+  .archive-section{margin-top:20px;border-top:1px solid var(--line);padding-top:14px}
+  .archive-head{display:flex;align-items:center;gap:7px;cursor:pointer;padding:6px 4px;border-radius:8px;color:var(--ink-2);user-select:none}
+  .archive-head:hover{background:var(--surface-2)}
+  .archive-head .arch-chevron{font-size:18px;color:var(--ink-3);transition:transform .15s}
+  .archive-head .mi{font-size:17px;color:var(--ink-3)}
+  .archive-head b{font-size:12.5px;font-weight:600}
+  .archive-head .arch-count{font-size:10px;font-weight:600;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);padding:1px 8px;border-radius:999px;margin-left:2px}
+  .archive-board{margin-top:12px}
   .memo-note .mn-foot .mtag{color:var(--ink-3);font-weight:500}
 
   /* ===== 연간 ===== */
@@ -484,6 +513,17 @@
   .icon-pick-btn:hover{border-color:var(--point)}
   .icon-pick-btn .mi{font-size:19px}
   .icon-pop{position:fixed;z-index:600;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 12px 40px rgba(0,0,0,.18);padding:10px;width:236px;display:none}
+  /* 날짜 상세 모달 */
+  .day-sec-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--ink-3);margin-bottom:8px}
+  .day-sec-label .mi{font-size:15px;color:var(--point)}
+  .day-list{display:flex;flex-direction:column;gap:6px}
+  .day-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:12px;background:var(--surface-2)}
+  .day-item .di-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;background:var(--point)}
+  .day-item.done .di-dot{background:var(--ink-4)}
+  .day-item .di-title{flex:1;color:var(--ink-2)}
+  .day-item .di-tag{font-size:9px;padding:2px 7px;border-radius:5px;color:var(--ink-3);background:var(--surface);border:1px solid var(--line)}
+  .day-item .di-check{color:var(--ink-4);font-size:15px}
+  .day-empty{font-size:11px;color:var(--ink-4);padding:8px 2px;text-align:center}
   .icon-pop.on{display:block}
   .icon-pop-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;max-height:200px;overflow-y:auto}
   .icon-opt{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-2);border:1.5px solid transparent}
@@ -492,7 +532,7 @@
   .icon-opt .mi{font-size:18px}
 </style>
 </head>
-<body data-theme="straw">
+<body data-mode="light">
 
   <div class="titlebar">
     <div class="t-brand">모아보드</div>
@@ -517,15 +557,20 @@
       </div>
 
       <div class="side-foot">
+        <div class="mode-toggle">
+          <button class="mode-btn" id="modeLight" onclick="setMode('light')"><span class="mi">light_mode</span> 라이트</button>
+          <button class="mode-btn" id="modeDark" onclick="setMode('dark')"><span class="mi">dark_mode</span> 다크</button>
+        </div>
+        <div class="color-label">포인트 컬러</div>
         <div class="theme-pick">
-          <i class="th-straw" onclick="setTheme('straw')"></i>
-          <i class="th-blue" onclick="setTheme('blue')"></i>
-          <i class="th-violet" onclick="setTheme('violet')"></i>
-          <i class="th-emerald" onclick="setTheme('emerald')"></i>
-          <i class="th-night" onclick="setTheme('night')"></i>
+          <i class="th-straw" data-color="#ff4d8d" onclick="setPointColor('#ff4d8d')"></i>
+          <i class="th-blue" data-color="#3d7bff" onclick="setPointColor('#3d7bff')"></i>
+          <i class="th-violet" data-color="#8b5cf6" onclick="setPointColor('#8b5cf6')"></i>
+          <i class="th-emerald" data-color="#10b981" onclick="setPointColor('#10b981')"></i>
+          <i class="th-amber" data-color="#f5a623" onclick="setPointColor('#f5a623')"></i>
           <label class="th-custom" title="직접 고르기">
             <span class="mi">colorize</span>
-            <input type="color" id="customColor" value="#ff4d8d" oninput="setCustomColor(this.value)">
+            <input type="color" id="customColor" value="#ff4d8d" oninput="setPointColor(this.value)">
           </label>
         </div>
       </div>
@@ -659,6 +704,17 @@
           <div class="mt-tags" id="memoTags"></div>
         </div>
         <div class="memo-board" id="memoBoard"></div>
+
+        <!-- 보관함 (맨 아래 접힘) -->
+        <div class="archive-section" id="archiveSection" style="display:none">
+          <div class="archive-head" onclick="toggleArchive()">
+            <span class="mi arch-chevron" id="archChevron">chevron_right</span>
+            <span class="mi">inventory_2</span>
+            <b>보관함</b>
+            <span class="arch-count" id="archCount">0</span>
+          </div>
+          <div class="memo-board archive-board" id="archiveBoard" style="display:none"></div>
+        </div>
       </div>
 
       <!-- 메모 편집 모달 -->
@@ -784,6 +840,26 @@
     </div>
   </div>
 
+  <!-- 날짜 상세 모달: 그날 일정 + 완료한 할 일 -->
+  <div class="modal-back" id="dayModal">
+    <div class="modal">
+      <div class="modal-h">
+        <span class="mi">event</span>
+        <b id="dayModalTitle">날짜</b>
+        <div class="x" onclick="closeDayModal()"><span class="mi">close</span></div>
+      </div>
+      <div class="modal-body">
+        <div class="day-sec-label"><span class="mi">calendar_month</span> 일정</div>
+        <div id="dayEvents" class="day-list"></div>
+        <div class="day-sec-label" style="margin-top:16px"><span class="mi">task_alt</span> 이날 완료한 할 일</div>
+        <div id="dayDoneTodos" class="day-list"></div>
+        <div class="ev-actions" style="margin-top:16px">
+          <button class="ev-save" onclick="addEventFromDay()"><span class="mi" style="font-size:16px">add</span> 이 날 일정 추가</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 아이콘 피커 팝오버 (공용) -->
   <div class="icon-pop" id="iconPop">
     <div class="icon-pop-grid" id="iconPopGrid"></div>
@@ -810,19 +886,43 @@
   </div>
 
 <script>
-  function setTheme(t){ document.body.setAttribute('data-theme', t); document.documentElement.style.removeProperty('--point'); document.documentElement.style.removeProperty('--point-soft'); document.documentElement.style.removeProperty('--point-dim'); }
-  function setCustomColor(hex){
-    // 다크가 아니면 라이트 계열 유지, 포인트만 커스텀
-    const isNight = document.body.getAttribute('data-theme')==='night';
+  let _mode = 'light';
+  let _pointColor = '#ff4d8d';
+
+  function setMode(mode){
+    _mode = mode;
+    document.body.setAttribute('data-mode', mode);
+    // 버튼 활성 표시
+    document.getElementById('modeLight').classList.toggle('on', mode==='light');
+    document.getElementById('modeDark').classList.toggle('on', mode==='dark');
+    // 포인트 컬러의 soft/dim을 모드에 맞게 다시 계산
+    applyPointColor(_pointColor);
+    if(_todoBridge && moa.setting) moa.setting.set('mode', mode);
+  }
+
+  function setPointColor(hex){
+    _pointColor = hex;
+    applyPointColor(hex);
+    // 팔레트 선택 표시
+    document.querySelectorAll('.theme-pick i').forEach(i=>{
+      i.classList.toggle('on', (i.getAttribute('data-color')||'').toLowerCase()===hex.toLowerCase());
+    });
+    const cc=document.getElementById('customColor'); if(cc) cc.value=hex;
+    if(_todoBridge && moa.setting) moa.setting.set('pointColor', hex);
+  }
+
+  // hex + 현재 모드 → point/soft/dim CSS 변수 적용
+  function applyPointColor(hex){
+    const isDark = _mode==='dark';
     const r=parseInt(hex.substr(1,2),16), g=parseInt(hex.substr(3,2),16), b=parseInt(hex.substr(5,2),16);
-    const mix=(a,t)=>Math.round(a+(255-a)*t);
-    const mixDark=(a,t)=>Math.round(a*(1-t));
-    const soft = isNight
-      ? `rgb(${mixDark(r,.55)},${mixDark(g,.55)},${mixDark(b,.55)})`
-      : `rgb(${mix(r,.85)},${mix(g,.85)},${mix(b,.85)})`;
-    const dim = isNight
-      ? `rgb(${mixDark(r,.72)},${mixDark(g,.72)},${mixDark(b,.72)})`
-      : `rgb(${mix(r,.93)},${mix(g,.93)},${mix(b,.93)})`;
+    const mixLight=(a,t)=>Math.round(a+(255-a)*t);   // 흰색과 섞기 (라이트용 연한 톤)
+    const mixDark=(a,t)=>Math.round(a*(1-t));          // 검정과 섞기 (다크용 어두운 톤)
+    const soft = isDark
+      ? `rgb(${mixDark(r,.62)},${mixDark(g,.62)},${mixDark(b,.62)})`
+      : `rgb(${mixLight(r,.85)},${mixLight(g,.85)},${mixLight(b,.85)})`;
+    const dim = isDark
+      ? `rgb(${mixDark(r,.78)},${mixDark(g,.78)},${mixDark(b,.78)})`
+      : `rgb(${mixLight(r,.93)},${mixLight(g,.93)},${mixLight(b,.93)})`;
     const root=document.documentElement.style;
     root.setProperty('--point',hex);
     root.setProperty('--point-soft',soft);
@@ -884,6 +984,7 @@
       <div class="ti ${t.done?'done':''}" data-id="${t.id}">
         <div class="bx" onclick="toggleTodo(${t.id})"><span class="mi">check</span></div>
         <span class="ti-title" onclick="toggleTodo(${t.id})" style="flex:1;cursor:pointer">${escapeHtml(t.title)}</span>
+        ${t.carried?`<span class="t-carry" title="이전 날짜에서 넘어온 할 일"><span class="mi">history</span>이월</span>`:''}
         <button class="ti-edit row-act" onclick="editTodo(${t.id})" title="수정"><span class="mi">edit</span></button>
         <button class="ti-del row-act" onclick="delTodo(${t.id})" title="삭제"><span class="mi">close</span></button>
         ${t.category?`<span class="t-tag">${escapeHtml(t.category)}</span>`:'<span class="t-tag-empty"></span>'}
@@ -1015,19 +1116,20 @@
     cells.forEach(c=>{
       const el=document.createElement('div');
       el.className='bd'+(c.out?' out':'')+(!c.out && c.ymd===today?' today':'');
-      let html=`${c.day}`;
+      let html=`<div class="bd-num">${c.day}</div>`;
       if(c.events && c.events.length){
-        // 최대 2개까지 제목, 그 이상은 +N
-        c.events.slice(0,2).forEach(e=>{
-          const cls = e.is_deadline ? 'comm' : 'code';
-          html+=`<div class="ev ${cls}">${escapeHtml(e.title)}</div>`;
-        });
-        if(c.events.length>2) html+=`<div class="ev-more">+${c.events.length-2}</div>`;
+        html+=`<div class="bd-evs">`;
+        // 1개만 제목 표시, 나머지는 +N (칸 높이 고정 유지)
+        const first=c.events[0];
+        const cls = first.is_deadline ? 'comm' : 'code';
+        html+=`<div class="ev ${cls}">${escapeHtml(first.title)}</div>`;
+        if(c.events.length>1) html+=`<div class="ev-more">+${c.events.length-1}</div>`;
+        html+=`</div>`;
       }
       el.innerHTML=html;
       if(!c.out && c.ymd){
         el.style.cursor='pointer';
-        el.onclick=()=>{ showEventInputFor(c.ymd); };
+        el.onclick=()=>{ openDayModal(c.ymd, c.events||[]); };
       }
       frag.appendChild(el);
     });
@@ -1036,6 +1138,54 @@
   function calPrev(){ _calMonth--; if(_calMonth<0){_calMonth=11;_calYear--;} renderCalendar(); }
   function calNext(){ _calMonth++; if(_calMonth>11){_calMonth=0;_calYear++;} renderCalendar(); }
   function calToday(){ const n=new Date(); _calYear=n.getFullYear(); _calMonth=n.getMonth(); renderCalendar(); }
+
+  // 날짜 상세 팝업: 그날 일정 + 완료한 할 일
+  let _dayModalYmd = null;
+  async function openDayModal(ymd, events){
+    _dayModalYmd = ymd;
+    const [y,m,d] = ymd.split('-').map(Number);
+    document.getElementById('dayModalTitle').textContent = `${m}월 ${d}일`;
+    // 일정
+    const evBox = document.getElementById('dayEvents');
+    if(events && events.length){
+      evBox.innerHTML = events.map(e=>`
+        <div class="day-item">
+          <span class="di-dot" style="${e.is_deadline?'background:var(--point)':''}"></span>
+          <span class="di-title">${escapeHtml(e.title)}</span>
+          ${e.is_deadline?'<span class="di-tag">마감</span>':''}
+          ${e.time?`<span class="di-tag">${escapeHtml(e.time)}</span>`:''}
+        </div>`).join('');
+    } else {
+      evBox.innerHTML = '<div class="day-empty">일정이 없어요</div>';
+    }
+    // 그날 완료한 할 일
+    const doneBox = document.getElementById('dayDoneTodos');
+    doneBox.innerHTML = '<div class="day-empty">불러오는 중…</div>';
+    document.getElementById('dayModal').classList.add('on');
+    if(_todoBridge && moa.todo.doneOn){
+      const done = await moa.todo.doneOn(ymd);
+      if(done && done.length){
+        doneBox.innerHTML = done.map(t=>`
+          <div class="day-item done">
+            <span class="mi di-check">check_circle</span>
+            <span class="di-title">${escapeHtml(t.title)}</span>
+            ${t.category?`<span class="di-tag">${escapeHtml(t.category)}</span>`:''}
+          </div>`).join('');
+      } else {
+        doneBox.innerHTML = '<div class="day-empty">이 날 완료한 할 일이 없어요</div>';
+      }
+    } else {
+      doneBox.innerHTML = '<div class="day-empty">앱에서 볼 수 있어요</div>';
+    }
+  }
+  function closeDayModal(){ document.getElementById('dayModal').classList.remove('on'); }
+  function addEventFromDay(){
+    const ymd = _dayModalYmd;
+    closeDayModal();
+    if(ymd) showEventInputFor(ymd);
+  }
+
+  function calPrev_unused(){}
   // 캘린더 날짜 클릭 → 그 날짜로 일정 추가 폼 열기
   function showEventInputFor(ymd){
     showEventInput();
@@ -1449,14 +1599,48 @@
     const shown = _memoFilter ? memos.filter(m=>m.tag===_memoFilter) : memos;
     if(!shown.length){
       board.innerHTML='<div class="memo-empty">'+(memos.length?'이 태그의 메모가 없어요.':'아직 메모가 없어요. "새 메모"로 시작해보세요.')+'</div>';
-      return;
+    } else {
+      board.innerHTML=shown.map((m,i)=>`
+        <div class="memo-note ${i%2?'g2':''}" onclick="openMemo(${m.id})">
+          <button class="mn-arch" title="보관하기" onclick="event.stopPropagation();archiveMemo(${m.id})"><span class="mi">inventory_2</span></button>
+          <div class="mn-title">${escapeHtml(m.title||'(제목 없음)')}</div>
+          <div class="mn-body">${escapeHtml(m.body||'').replace(/\n/g,'<br>')}</div>
+          <div class="mn-foot">${m.tag?`<span class="mtag">${escapeHtml(m.tag)}</span> · `:''}${fmtMemoDate(m.updated_at)}</div>
+        </div>`).join('');
     }
-    board.innerHTML=shown.map((m,i)=>`
-      <div class="memo-note ${i%2?'g2':''}" onclick="openMemo(${m.id})">
+    await renderArchived();
+  }
+  async function renderArchived(){
+    const sec=document.getElementById('archiveSection');
+    const archBoard=document.getElementById('archiveBoard');
+    const archived=await moa.memo.listArchived();
+    document.getElementById('archCount').textContent=archived.length;
+    // 보관된 게 하나도 없으면 섹션 자체 숨김
+    sec.style.display = archived.length ? 'block' : 'none';
+    if(!archived.length){ archBoard.innerHTML=''; return; }
+    archBoard.innerHTML=archived.map((m,i)=>`
+      <div class="memo-note archived ${i%2?'g2':''}" onclick="openMemo(${m.id})">
+        <button class="mn-arch restore" title="복원하기" onclick="event.stopPropagation();restoreMemo(${m.id})"><span class="mi">unarchive</span></button>
         <div class="mn-title">${escapeHtml(m.title||'(제목 없음)')}</div>
         <div class="mn-body">${escapeHtml(m.body||'').replace(/\n/g,'<br>')}</div>
         <div class="mn-foot">${m.tag?`<span class="mtag">${escapeHtml(m.tag)}</span> · `:''}${fmtMemoDate(m.updated_at)}</div>
       </div>`).join('');
+  }
+  let _archiveOpen=false;
+  function toggleArchive(){
+    _archiveOpen=!_archiveOpen;
+    document.getElementById('archiveBoard').style.display=_archiveOpen?'':'none';
+    document.getElementById('archChevron').textContent=_archiveOpen?'expand_more':'chevron_right';
+  }
+  async function archiveMemo(id){
+    if(!_todoBridge)return;
+    await moa.memo.archive(id, true);
+    await renderMemos();
+  }
+  async function restoreMemo(id){
+    if(!_todoBridge)return;
+    await moa.memo.archive(id, false);
+    await renderMemos();
   }
   function setMemoFilter(t){ _memoFilter=t; renderMemos(); }
 
@@ -1498,6 +1682,7 @@
     await renderMemos();
   }
   document.getElementById('memoModal').addEventListener('click', e=>{ if(e.target.id==='memoModal') closeMemo(); });
+  document.getElementById('dayModal').addEventListener('click', e=>{ if(e.target.id==='dayModal') closeDayModal(); });
 
   // ── 공용 아이콘 피커 ──
   const ICON_CHOICES = [
@@ -1599,6 +1784,9 @@
   renderGoals();
   renderMemos();
   refreshSummary();
+  // 테마 기본 표시 (저장값은 브릿지 연결 시 덮어씀)
+  setMode('light');
+  setPointColor('#ff4d8d');
 
   // ─────────────────────────────────────────────
   // Electron 브릿지: 실제 DB/트래커 연결
@@ -1697,15 +1885,22 @@
       }
     },1000);
 
-    // 저장된 포인트 컬러 복원
-    moa.setting.get('pointColor').then(c=>{ if(c && c!=='#ff4d8d') setCustomColor(c); });
-    moa.setting.get('theme').then(t=>{ if(t && t!=='straw') setTheme(t); });
-
-    // 컬러 변경 시 저장
-    const origCustom = setCustomColor;
-    window.setCustomColor = function(hex){ origCustom(hex); moa.setting.set('pointColor', hex); };
-    const origTheme = setTheme;
-    window.setTheme = function(t){ origTheme(t); moa.setting.set('theme', t); };
+    // 저장된 모드(라이트/다크) + 포인트 컬러 복원
+    Promise.all([
+      moa.setting.get('mode'),
+      moa.setting.get('pointColor')
+    ]).then(([mode, color])=>{
+      _mode = (mode==='dark') ? 'dark' : 'light';
+      _pointColor = color || '#ff4d8d';
+      document.body.setAttribute('data-mode', _mode);
+      document.getElementById('modeLight').classList.toggle('on', _mode==='light');
+      document.getElementById('modeDark').classList.toggle('on', _mode==='dark');
+      applyPointColor(_pointColor);
+      document.querySelectorAll('.theme-pick i').forEach(i=>{
+        i.classList.toggle('on', (i.getAttribute('data-color')||'').toLowerCase()===_pointColor.toLowerCase());
+      });
+      const cc=document.getElementById('customColor'); if(cc) cc.value=_pointColor;
+    });
   }
 
   // ─────────────────────────────────────────────
