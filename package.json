@@ -1,6 +1,6 @@
 {
   "name": "moaboard",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "모아보드 — 윈도우 작업 대시보드 (워크 트래커 자동 감지)",
   "main": "src/main/main.js",
   "author": "Moa",
