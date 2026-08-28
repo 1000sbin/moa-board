@@ -137,18 +137,17 @@
   .cal-h .arw{border:none;background:none;width:24px;height:24px;border-radius:6px;cursor:pointer;color:var(--ink-3);display:flex;align-items:center;justify-content:center}
   .cal-h .arw:hover{background:var(--surface-2);color:var(--ink)}
   .cal-h .arw .mi{font-size:17px}
-  .bcal{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+  .bcal{display:grid;grid-template-columns:repeat(7,1fr);gap:0}
   .bcal .dow{font-size:10px;color:var(--ink-4);font-weight:500;text-align:center;padding-bottom:5px}
-  .bcal .bd{height:62px;min-height:62px;box-sizing:border-box;border-radius:8px;padding:5px 6px;font-size:11px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:.12s;color:var(--ink-2);overflow:hidden}
+  .bcal .bd{height:62px;min-height:62px;box-sizing:border-box;border-radius:0;padding:5px 6px;font-size:11px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:.12s;color:var(--ink-2);overflow:visible;border:1px solid var(--line-2)}
   .bcal .bd .bd-num{flex:0 0 auto}
-  .bcal .bd .bd-evs{display:flex;flex-direction:column;gap:2px;overflow:hidden;min-height:0}
+  .bcal .bd .bd-evs{display:flex;flex-direction:column;gap:2px;min-height:0}
   .bcal .bd:hover{background:var(--surface-2)}
   .bcal .bd.out{color:var(--ink-4)}
   .bcal .bd.today{background:var(--point);color:#fff;font-weight:700}
   .bcal .bd .ev{font-size:8px;padding:2px 5px;border-radius:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--surface-2);color:var(--ink-2);border-left:2px solid var(--ink-4);max-width:100%;box-sizing:border-box}
-  /* 기간 일정 막대 */
-  /* 기간 일정 막대 - 셀 좌우 padding(6px)을 상쇄해 칸끼리 이어져 보이게 */
-  .bcal .bd .ev.ev-span{background:var(--point);color:#fff;border-left:none;border-radius:0;font-weight:600;margin-left:-6px;margin-right:-6px;padding-left:6px;padding-right:6px;width:auto}
+  /* 기간 일정 막대 - 옆 칸까지 확실히 덮어 이어지게 */
+  .bcal .bd .ev.ev-span{background:var(--point);color:#fff;border-left:none;border-radius:0;font-weight:600;margin-left:-8px;margin-right:-8px;padding-left:8px;padding-right:8px;width:auto;max-width:none;position:relative;z-index:1}
   .bcal .bd .ev.ev-span.span-start{border-radius:4px 0 0 4px;margin-left:0;padding-left:5px}
   .bcal .bd .ev.ev-span.span-end{border-radius:0 4px 4px 0;margin-right:0;padding-right:5px}
   .bcal .bd .ev.ev-span.span-start.span-end{border-radius:4px}
