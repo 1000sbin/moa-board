@@ -1155,6 +1155,7 @@
     catInput.setAttribute('list','todoCatList');
     span.replaceWith(input);
     input.insertAdjacentElement('afterend', catInput);
+    attachArrowConvert(input);
     input.focus();
     input.select();
 
@@ -1932,7 +1933,7 @@
   }
   async function toggleMs(id){ if(!_todoBridge)return; await moa.goal.toggleMilestone(id); await renderGoals(); }
   async function delMs(id){ if(!_todoBridge)return; await moa.goal.removeMilestone(id); await renderGoals(); }
-  function showMsInput(gid){ const el=document.getElementById('msInput-'+gid); el.style.display='flex'; document.getElementById('msTitle-'+gid).focus(); }
+  function showMsInput(gid){ const el=document.getElementById('msInput-'+gid); el.style.display='flex'; const inp=document.getElementById('msTitle-'+gid); attachArrowConvert(inp); inp.focus(); }
   function hideMsInput(gid){ const el=document.getElementById('msInput-'+gid); if(el){el.style.display='none';} }
   async function addMs(gid){
     if(!_todoBridge)return;
@@ -2175,6 +2176,8 @@
   // 테마 기본 표시 (저장값은 브릿지 연결 시 덮어씀)
   setMode('light');
   setPointColor('#ff4d8d');
+  // `->` → `→` 자동 변환 바인딩 (고정 입력창)
+  bindArrowInputs();
 
   // ─────────────────────────────────────────────
   // Electron 브릿지: 실제 DB/트래커 연결
@@ -2418,6 +2421,32 @@
 
   // ── 드래그앤드롭으로 순서 바꾸기 (범용) ──
   // container 안의 [data-id] 자식들을 드래그 가능하게. 놓으면 onReorder(정렬된 id배열) 호출.
+  // ── `->` 를 `→` 로 자동 변환 ──
+  // 입력창에 붙이면 타이핑 중 `->`가 즉시 화살표로 바뀜 (커서 위치 유지)
+  function attachArrowConvert(el){
+    if(!el || el._arrowBound) return;
+    el._arrowBound = true;
+    el.addEventListener('input', ()=>{
+      if(el.value.indexOf('->')===-1) return;
+      const pos = el.selectionStart;
+      const before = el.value.slice(0, pos);
+      // 커서 앞에서 바뀐 '->' 개수만큼 커서를 당겨줌 (2글자→1글자)
+      const removed = (before.match(/->/g)||[]).length;
+      el.value = el.value.replace(/->/g, '→');
+      const newPos = pos - removed;
+      el.setSelectionRange(newPos, newPos);
+    });
+  }
+  // 페이지 내 관련 입력창 전부에 적용 (동적 생성되는 것 포함해 주기적으로 스캔)
+  function bindArrowInputs(){
+    const sels = [
+      '#todoInput','#evTitle','#mgTitle',
+      '#memoTitleInput','#memoBodyInput',
+      'input[id^="msTitle-"]'        // 마일스톤 (동적)
+    ];
+    document.querySelectorAll(sels.join(',')).forEach(attachArrowConvert);
+  }
+
   function enableDragSort(container, itemSelector, onReorder, handleSelector){
     if(!container) return;
     let dragEl=null;
