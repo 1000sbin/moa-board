@@ -185,6 +185,7 @@
   .todo-add .mi{font-size:15px}
   .todo-input-wrap{margin-top:8px;display:flex;gap:6px}
   .todo-input{flex:1;font-family:var(--font);font-size:11.5px;border:1px solid var(--point);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink)}
+  .ti-edit-cat{flex:0 0 auto !important;width:90px;margin-left:6px}
   .todo-input:focus{outline:none}
   .todo-catsel{font-family:var(--font);font-size:11px;border:1px solid var(--line);border-radius:7px;padding:0 6px;background:var(--surface);color:var(--ink);cursor:pointer;flex:0 0 auto}
   .ti .ti-del{cursor:pointer;color:var(--ink-4);width:20px;height:20px;border-radius:5px;opacity:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border:none;background:none}
@@ -541,6 +542,8 @@
   .run-item .ri-add{border:none;background:var(--point);color:#fff;border-radius:6px;width:28px;height:28px;cursor:pointer;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
   .run-item .ri-add .mi{font-size:16px}
   .run-item .ri-add:disabled{background:var(--line);color:var(--ink-4);cursor:default}
+  .run-item .ri-newcat{font-family:var(--font);font-size:11px;border:1px solid var(--point);border-radius:6px;padding:6px 8px;background:var(--surface);color:var(--ink);width:110px;flex:0 0 auto}
+  .run-item .ri-newcat:focus{outline:none}
   .run-empty{font-size:11px;color:var(--ink-3);padding:12px;text-align:center;border:1px dashed var(--line);border-radius:var(--r-sm)}
   .run-refresh{font-size:10.5px;color:var(--ink-3);cursor:pointer;display:inline-flex;align-items:center;gap:3px;margin-left:auto;font-weight:500}
   .run-refresh .mi{font-size:13px}
@@ -688,6 +691,7 @@
             <div class="card">
               <div class="ct"><span class="mi">task_alt</span> 오늘 할 일 <span class="more" id="todoCount">0/0</span></div>
               <div class="todo" id="todoList"></div>
+              <datalist id="todoCatList"></datalist>
               <div class="todo-add" id="todoAddBtn" onclick="showTodoInput()"><span class="mi">add</span> 할 일 추가</div>
               <div class="todo-input-wrap" id="todoInputWrap" style="display:none">
                 <input id="todoInput" class="todo-input" placeholder="할 일 입력 후 Enter" onkeydown="onTodoKey(event)">
@@ -1060,6 +1064,19 @@
       updateMilk(); return;
     }
     const todos = await moa.todo.list();
+    // 카테고리 자동완성 목록 채우기 (기존 할일 카테고리 + 트래커 카테고리)
+    try {
+      const dl = document.getElementById('todoCatList');
+      if(dl){
+        const cats = new Set();
+        todos.forEach(t=>{ if(t.category) cats.add(t.category); });
+        if(moa.tracker && moa.tracker.categories){
+          const tc = await moa.tracker.categories();
+          (tc||[]).forEach(c=>cats.add(c));
+        }
+        dl.innerHTML = [...cats].map(c=>`<option value="${escapeAttr(c)}">`).join('');
+      }
+    } catch(_){}
     if(!todos.length){
       box.innerHTML = '<div class="todo-empty">할 일이 없어요. 아래에서 추가해보세요.</div>';
       updateMilk(); return;
@@ -1084,32 +1101,55 @@
     const span = row.querySelector('.ti-title');
     if(!span) return;
     const oldTitle = span.textContent;
-    // 제목을 인라인 입력창으로 교체
+    // 현재 할 일의 카테고리 가져오기
+    const todos = await moa.todo.list();
+    const cur = todos.find(x=>x.id===id);
+    const oldCat = cur ? (cur.category||'') : '';
+
+    // 제목 입력창
     const input = document.createElement('input');
     input.className = 'todo-input';
     input.value = oldTitle;
     input.style.flex = '1';
+    // 카테고리 입력창 (목록 자동완성)
+    const catInput = document.createElement('input');
+    catInput.className = 'todo-input ti-edit-cat';
+    catInput.value = oldCat;
+    catInput.placeholder = '분류';
+    catInput.setAttribute('list','todoCatList');
     span.replaceWith(input);
+    input.insertAdjacentElement('afterend', catInput);
     input.focus();
     input.select();
+
     let done = false;
     const commit = async (save)=>{
       if(done) return; done = true;
       if(save){
         const title = input.value.trim();
-        if(title && title !== oldTitle){
-          const todos = await moa.todo.list();
-          const t = todos.find(x=>x.id===id);
-          await moa.todo.update({ id, title, category: t ? t.category : null });
+        const category = catInput.value.trim() || null;
+        if(title && (title !== oldTitle || category !== (oldCat||null))){
+          await moa.todo.update({ id, title, category });
+        } else if(title !== oldTitle || (category||'') !== oldCat){
+          await moa.todo.update({ id, title: title||oldTitle, category });
         }
       }
       await renderTodos();
     };
-    input.addEventListener('keydown', e=>{
+    const onKey = e=>{
       if(e.key==='Enter') commit(true);
       else if(e.key==='Escape') commit(false);
-    });
-    input.addEventListener('blur', ()=>commit(true));
+    };
+    input.addEventListener('keydown', onKey);
+    catInput.addEventListener('keydown', onKey);
+    // 둘 사이 이동할 땐 commit 안 하고, 바깥 클릭 시에만
+    let blurTimer;
+    const onBlur = ()=>{ blurTimer=setTimeout(()=>commit(true), 120); };
+    const cancelBlur = ()=>clearTimeout(blurTimer);
+    input.addEventListener('blur', onBlur);
+    catInput.addEventListener('blur', onBlur);
+    input.addEventListener('focus', cancelBlur);
+    catInput.addEventListener('focus', cancelBlur);
   }
 
   async function toggleTodo(id){
@@ -2170,27 +2210,35 @@
   }
 
   function onCatChange(sel){
+    // '+ 새 카테고리' 선택 시, 옆에 인라인 입력창 표시 (prompt는 Electron에서 안 됨)
+    const i = sel.id.replace('cat_','');
+    let inp = document.getElementById('newcat_'+i);
     if(sel.value === '__new__'){
-      const name = prompt('새 카테고리 이름을 입력하세요');
-      if(name && name.trim()){
-        const v = name.trim();
-        if(!_categories.includes(v)) _categories.push(v);
-        // 모든 select 갱신
-        document.querySelectorAll('#runList select').forEach(s=>{
-          const cur = s===sel ? v : s.value;
-          s.innerHTML = catOptions(cur);
-        });
-      } else {
-        sel.value = _categories[0];
+      if(!inp){
+        inp = document.createElement('input');
+        inp.id = 'newcat_'+i;
+        inp.className = 'ri-newcat';
+        inp.placeholder = '새 카테고리 이름';
+        sel.insertAdjacentElement('afterend', inp);
       }
+      inp.style.display = '';
+      inp.focus();
+    } else {
+      if(inp) inp.style.display = 'none';
     }
   }
 
   async function addFromRunning(process, i){
     if(!hasBridge) return;
     const sel = document.getElementById('cat_'+i);
-    const category = sel ? sel.value : '기타';
-    if(category === '__new__') return;
+    let category = sel ? sel.value : '기타';
+    // 새 카테고리 선택 시 인라인 입력값 사용
+    if(category === '__new__'){
+      const inp = document.getElementById('newcat_'+i);
+      const v = inp ? inp.value.trim() : '';
+      if(!v){ if(inp) inp.focus(); return; } // 이름 없으면 추가 안 함
+      category = v;
+    }
     await moa.rules.add({ match_type:'process', pattern:process, category });
     await loadRules();
     await loadRunningApps();
