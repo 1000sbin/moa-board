@@ -601,6 +601,7 @@
       <div class="nav-label">워크스페이스</div>
       <div class="nav on" onclick="go('main',this)"><span class="mi fill">grid_view</span> 메인</div>
       <div class="nav" onclick="go('memo',this)"><span class="mi">sticky_note_2</span> 메모</div>
+      <div class="nav" onclick="go('month',this)"><span class="mi">calendar_month</span> 월간</div>
       <div class="nav" onclick="go('goal',this)"><span class="mi">target</span> 연간</div>
 
       <!-- 미니멀 진행 바 -->
@@ -736,7 +737,7 @@
             </div>
 
             <div class="card">
-              <div class="ct"><span class="mi">trending_up</span> 이번 달 목표 <span class="more" onclick="go('goal',document.querySelectorAll('.nav')[2])" style="cursor:pointer">관리 <span class="mi">chevron_right</span></span></div>
+              <div class="ct"><span class="mi">trending_up</span> 이번 달 목표 <span class="more" onclick="go('month',document.querySelectorAll('.nav')[2])" style="cursor:pointer">관리 <span class="mi">chevron_right</span></span></div>
               <div class="mp-top"><b id="monthPct">0%</b><span id="monthLabel">이번 달 목표</span></div>
               <div class="mp-bar"><i id="monthBar" style="width:0%"></i></div>
               <div class="mgoal-mini" id="mgoalMini"></div>
@@ -792,8 +793,9 @@
       </div>
 
       <!-- ===== 연간 ===== -->
-      <div class="page" id="page-goal">
-        <div class="head"><div><h1>연간 목표</h1><div class="sub">2026년 · 상반기가 지났어요</div></div></div>
+      <!-- ===== 월간 (이번 달 목표 + 돌아보기) ===== -->
+      <div class="page" id="page-month">
+        <div class="head"><div><h1>월간</h1><div class="sub" id="monthPageSub">이번 달 목표와 기록</div></div></div>
 
         <!-- 이번 달 목표 섹션 -->
         <div class="month-section">
@@ -859,8 +861,11 @@
             <div class="review-list" id="reviewList"></div>
           </div>
         </div>
+      </div>
 
-        <div class="section-divider"></div>
+      <!-- ===== 연간 목표 ===== -->
+      <div class="page" id="page-goal">
+        <div class="head"><div><h1>연간 목표</h1><div class="sub">올해의 큰 그림</div></div></div>
         <div class="year-label"><span class="mi">target</span> 연간 목표 <span class="more" onclick="showGoalInput()" style="cursor:pointer;margin-left:auto">목표 추가 <span class="mi">add</span></span></div>
         <div class="goal-input" id="goalInput" style="display:none">
           <input id="goalTitle" class="todo-input" placeholder="목표 이름 (예: 굿즈메이커 정식 배포)">
@@ -886,6 +891,7 @@
     <nav class="mobile-tabbar">
       <div class="mtab on" onclick="goM('main',this)"><span class="mi fill">grid_view</span> 메인</div>
       <div class="mtab" onclick="goM('memo',this)"><span class="mi">sticky_note_2</span> 메모</div>
+      <div class="mtab" onclick="goM('month',this)"><span class="mi">calendar_month</span> 월간</div>
       <div class="mtab" onclick="goM('goal',this)"><span class="mi">target</span> 연간</div>
     </nav>
   </div>
@@ -1026,7 +1032,7 @@
   function syncTabs(p){
     document.querySelectorAll('.nav').forEach(n=>n.classList.remove('on'));
     document.querySelectorAll('.mtab').forEach(n=>{n.classList.remove('on');n.querySelector('.mi').classList.remove('fill')});
-    const idx={main:0,memo:1,goal:2}[p];
+    const idx={main:0,memo:1,month:2,goal:3}[p];
     const nav=document.querySelectorAll('.nav')[idx]; if(nav){nav.classList.add('on');}
     const mt=document.querySelectorAll('.mtab')[idx]; if(mt){mt.classList.add('on');mt.querySelector('.mi').classList.add('fill');}
   }
