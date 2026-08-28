@@ -87,6 +87,8 @@ contextBridge.exposeInMainWorld('moa', {
     reorder: (ids) => ipcRenderer.invoke('goal:reorder', ids),
     addMilestone: (m) => ipcRenderer.invoke('milestone:add', m),
     toggleMilestone: (id) => ipcRenderer.invoke('milestone:toggle', id),
+    updateMilestone: (m) => ipcRenderer.invoke('milestone:update', m),
+    reorderMilestones: (ids) => ipcRenderer.invoke('milestone:reorder', ids),
     removeMilestone: (id) => ipcRenderer.invoke('milestone:delete', id),
   },
 

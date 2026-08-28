@@ -137,17 +137,17 @@
   .cal-h .arw{border:none;background:none;width:24px;height:24px;border-radius:6px;cursor:pointer;color:var(--ink-3);display:flex;align-items:center;justify-content:center}
   .cal-h .arw:hover{background:var(--surface-2);color:var(--ink)}
   .cal-h .arw .mi{font-size:17px}
-  .bcal{display:grid;grid-template-columns:repeat(7,1fr);gap:0}
+  .bcal{display:grid;grid-template-columns:repeat(7,1fr);gap:0;row-gap:5px}
   .bcal .dow{font-size:10px;color:var(--ink-4);font-weight:500;text-align:center;padding-bottom:5px}
-  .bcal .bd{height:62px;min-height:62px;box-sizing:border-box;border-radius:0;padding:5px 6px;font-size:11px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:.12s;color:var(--ink-2);overflow:visible;border:1px solid var(--line-2)}
+  .bcal .bd{height:74px;min-height:74px;box-sizing:border-box;border-radius:3px;padding:6px 7px;font-size:11px;font-weight:500;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:.12s;color:var(--ink-2);overflow:visible;border:none;background:var(--surface-2)}
   .bcal .bd .bd-num{flex:0 0 auto}
   .bcal .bd .bd-evs{display:flex;flex-direction:column;gap:2px;min-height:0}
-  .bcal .bd:hover{background:var(--surface-2)}
-  .bcal .bd.out{color:var(--ink-4)}
+  .bcal .bd:hover{background:var(--line-2)}
+  .bcal .bd.out{color:var(--ink-4);background:transparent}
   .bcal .bd.today{background:var(--point);color:#fff;font-weight:700}
   .bcal .bd .ev{font-size:8px;padding:2px 5px;border-radius:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--surface-2);color:var(--ink-2);border-left:2px solid var(--ink-4);max-width:100%;box-sizing:border-box}
   /* 기간 일정 막대 - 옆 칸까지 확실히 덮어 이어지게 */
-  .bcal .bd .ev.ev-span{background:var(--point);color:#fff;border-left:none;border-radius:0;font-weight:600;margin-left:-8px;margin-right:-8px;padding-left:8px;padding-right:8px;width:auto;max-width:none;position:relative;z-index:1}
+  .bcal .bd .ev.ev-span{background:var(--point);color:#fff;border-left:none;border-radius:0;font-weight:600;margin-left:-9px;margin-right:-9px;padding-left:9px;padding-right:9px;width:auto;max-width:none;position:relative;z-index:1}
   .bcal .bd .ev.ev-span.span-start{border-radius:4px 0 0 4px;margin-left:0;padding-left:5px}
   .bcal .bd .ev.ev-span.span-end{border-radius:0 4px 4px 0;margin-right:0;padding-right:5px}
   .bcal .bd .ev.ev-span.span-start.span-end{border-radius:4px}
@@ -497,6 +497,17 @@
   .ms-add-input input{flex:1;font-family:var(--font);font-size:10.5px;border:1px solid var(--line);border-radius:6px;padding:5px 8px;background:var(--surface);color:var(--ink)}
   .goal-empty{grid-column:1/-1;font-size:11.5px;color:var(--ink-3);text-align:center;padding:24px;border:1px dashed var(--line);border-radius:var(--r)}
   .ms .ms-date{margin-left:auto;font-size:9.5px;color:var(--ink-4)}
+  .ms .ms-drag{opacity:0;cursor:grab;color:var(--ink-4);display:flex;align-items:center;flex:0 0 auto;margin-right:-2px}
+  .ms:hover .ms-drag{opacity:1}
+  .ms .ms-drag:active{cursor:grabbing}
+  .ms .ms-drag .mi{font-size:13px}
+  .ms .ms-edit{opacity:0;cursor:pointer;color:var(--ink-4);width:18px;height:18px;border-radius:4px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border:none;background:none}
+  .ms:hover .ms-edit{opacity:1}
+  .ms .ms-edit:hover{background:var(--point-soft);color:var(--point)}
+  .ms .ms-edit .mi{font-size:12px}
+  .ms.dragging{opacity:.4}
+  .ms-edit-input{flex:1;font-family:var(--font);font-size:11px;border:1px solid var(--point);border-radius:5px;padding:3px 7px;background:var(--surface);color:var(--ink)}
+  .ms-edit-input:focus{outline:none}
 
   @media (max-width:1050px){
     .dash,.goal-grid{grid-template-columns:1fr}
@@ -1915,12 +1926,14 @@
         </div>
         ${g.subtitle?`<div class="gc-sub">${escapeHtml(g.subtitle)}${g.totalN?` · ${g.doneN}/${g.totalN} 완료`:''}</div>`:`<div class="gc-sub">${g.totalN?`${g.doneN}/${g.totalN} 완료`:'마일스톤을 추가해보세요'}</div>`}
         <div class="gc-bar"><i style="width:${g.pct}%"></i></div>
-        <div class="milestones">
+        <div class="milestones" data-goal="${g.id}">
           ${g.milestones.map(m=>`
-            <div class="ms ${m.done?'done':''}">
+            <div class="ms ${m.done?'done':''}" data-id="${m.id}">
+              <span class="ms-drag" title="드래그"><span class="mi">drag_indicator</span></span>
               <div class="ms-dot" onclick="toggleMs(${m.id})"><span class="mi">check</span></div>
-              <span onclick="toggleMs(${m.id})" style="flex:1">${escapeHtml(m.title)}</span>
+              <span class="ms-title" onclick="toggleMs(${m.id})" style="flex:1">${escapeHtml(m.title)}</span>
               ${m.due_label?`<span class="ms-date">${escapeHtml(m.due_label)}</span>`:''}
+              <button class="ms-edit" onclick="editMs(${m.id},${g.id})" title="수정"><span class="mi">edit</span></button>
               <button class="ms-x" onclick="delMs(${m.id})"><span class="mi">close</span></button>
             </div>`).join('')}
           <div class="ms-add" onclick="showMsInput(${g.id})"><span class="mi">add</span> 마일스톤 추가</div>
@@ -1930,9 +1943,48 @@
         </div>
       </div>`).join('');
     enableDragSort(grid, '.gcard', ids=>{ if(moa.goal.reorder) moa.goal.reorder(ids); }, '.gc-drag');
+    // 각 목표의 마일스톤 목록에 드래그 순서 활성화
+    grid.querySelectorAll('.milestones').forEach(box=>{
+      enableDragSort(box, '.ms', ids=>{ if(moa.goal.reorderMilestones) moa.goal.reorderMilestones(ids); }, '.ms-drag');
+    });
   }
   async function toggleMs(id){ if(!_todoBridge)return; await moa.goal.toggleMilestone(id); await renderGoals(); }
   async function delMs(id){ if(!_todoBridge)return; await moa.goal.removeMilestone(id); await renderGoals(); }
+  // 마일스톤 내용 인라인 수정
+  async function editMs(id, gid){
+    if(!_todoBridge) return;
+    const row = document.querySelector(`.ms[data-id="${id}"]`);
+    if(!row) return;
+    const titleEl = row.querySelector('.ms-title');
+    if(!titleEl) return;
+    const oldTitle = titleEl.textContent;
+    const input = document.createElement('input');
+    input.className = 'ms-edit-input';
+    input.value = oldTitle;
+    titleEl.replaceWith(input);
+    attachArrowConvert(input);
+    input.focus(); input.select();
+    let done=false;
+    const commit = async (save)=>{
+      if(done) return; done=true;
+      if(save){
+        const title=input.value.trim();
+        if(title && title!==oldTitle){
+          // 기존 due_label 유지
+          const goals=await moa.goal.list();
+          const g=goals.find(x=>x.id===gid);
+          const m=g && g.milestones.find(x=>x.id===id);
+          await moa.goal.updateMilestone({ id, title, due_label: m?m.due_label:null });
+        }
+      }
+      await renderGoals();
+    };
+    input.addEventListener('keydown', e=>{
+      if(e.key==='Enter') commit(true);
+      else if(e.key==='Escape') commit(false);
+    });
+    input.addEventListener('blur', ()=>commit(true));
+  }
   function showMsInput(gid){ const el=document.getElementById('msInput-'+gid); el.style.display='flex'; const inp=document.getElementById('msTitle-'+gid); attachArrowConvert(inp); inp.focus(); }
   function hideMsInput(gid){ const el=document.getElementById('msInput-'+gid); if(el){el.style.display='none';} }
   async function addMs(gid){

@@ -407,6 +407,14 @@ function registerIpc() {
        .run(m.goal_id, m.title, m.due_label || null).lastInsertRowid);
   ipcMain.handle('milestone:toggle', (_e, id) =>
     D().prepare('UPDATE milestone SET done = 1 - done WHERE id=?').run(id).changes);
+  ipcMain.handle('milestone:update', (_e, m) =>
+    D().prepare('UPDATE milestone SET title=?, due_label=? WHERE id=?')
+       .run(m.title, m.due_label || null, m.id).changes);
+  ipcMain.handle('milestone:reorder', (_e, ids) => {
+    const stmt = D().prepare('UPDATE milestone SET sort_order=? WHERE id=?');
+    ids.forEach((id, i) => stmt.run(i, id));
+    return true;
+  });
   ipcMain.handle('milestone:delete', (_e, id) => D().prepare('DELETE FROM milestone WHERE id=?').run(id).changes);
 
   // 월별 회고: 특정 월(YYYY-MM)의 날짜별 작업시간 + 완료 할일 집계
