@@ -397,25 +397,26 @@ function registerIpc() {
     `).all(ym);
     // 완료 할일: done_at은 이미 localtime으로 저장되므로 변환 없이
     const todoRows = D().prepare(`
-      SELECT date(done_at) AS ymd, COUNT(*) AS cnt
+      SELECT date(done_at) AS ymd, title, category
       FROM todo
       WHERE done=1 AND strftime('%Y-%m', done_at) = ?
-      GROUP BY ymd
+      ORDER BY done_at
     `).all(ym);
     // 날짜별로 합치기
     const byDay = {};
     for (const r of workRows) {
-      if (!byDay[r.ymd]) byDay[r.ymd] = { ymd: r.ymd, secs: 0, byCat: {}, todos: 0 };
+      if (!byDay[r.ymd]) byDay[r.ymd] = { ymd: r.ymd, secs: 0, byCat: {}, todos: 0, todoList: [] };
       byDay[r.ymd].secs += r.secs;
       byDay[r.ymd].byCat[r.category] = (byDay[r.ymd].byCat[r.category] || 0) + r.secs;
     }
     for (const r of todoRows) {
-      if (!byDay[r.ymd]) byDay[r.ymd] = { ymd: r.ymd, secs: 0, byCat: {}, todos: 0 };
-      byDay[r.ymd].todos = r.cnt;
+      if (!byDay[r.ymd]) byDay[r.ymd] = { ymd: r.ymd, secs: 0, byCat: {}, todos: 0, todoList: [] };
+      byDay[r.ymd].todos += 1;
+      byDay[r.ymd].todoList.push({ title: r.title, category: r.category });
     }
     // 월 합계
     const totalSecs = workRows.reduce((a, r) => a + r.secs, 0);
-    const totalTodos = todoRows.reduce((a, r) => a + r.cnt, 0);
+    const totalTodos = todoRows.length;
     const catTotals = {};
     for (const r of workRows) catTotals[r.category] = (catTotals[r.category] || 0) + r.secs;
     return { days: byDay, totalSecs, totalTodos, catTotals };
