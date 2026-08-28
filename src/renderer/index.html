@@ -187,7 +187,8 @@
   .todo-input{flex:1;font-family:var(--font);font-size:11.5px;border:1px solid var(--point);border-radius:7px;padding:8px 10px;background:var(--surface);color:var(--ink)}
   .ti-edit-cat{flex:0 0 auto !important;width:90px;margin-left:6px}
   .todo-input:focus{outline:none}
-  .todo-catsel{font-family:var(--font);font-size:11px;border:1px solid var(--line);border-radius:7px;padding:0 6px;background:var(--surface);color:var(--ink);cursor:pointer;flex:0 0 auto}
+  .todo-catsel{font-family:var(--font);font-size:11px;border:1px solid var(--line);border-radius:7px;padding:8px 8px;background:var(--surface);color:var(--ink);flex:0 0 auto;width:96px;box-sizing:border-box}
+  .todo-catsel:focus{outline:none;border-color:var(--point)}
   .ti .ti-del{cursor:pointer;color:var(--ink-4);width:20px;height:20px;border-radius:5px;opacity:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border:none;background:none}
   .ti:hover .ti-del{opacity:1}
   .ti .ti-del:hover{background:var(--point-soft);color:var(--point)}
@@ -695,13 +696,7 @@
               <div class="todo-add" id="todoAddBtn" onclick="showTodoInput()"><span class="mi">add</span> 할 일 추가</div>
               <div class="todo-input-wrap" id="todoInputWrap" style="display:none">
                 <input id="todoInput" class="todo-input" placeholder="할 일 입력 후 Enter" onkeydown="onTodoKey(event)">
-                <select id="todoCat" class="todo-catsel">
-                  <option value="">분류 없음</option>
-                  <option>커미션</option>
-                  <option>코딩</option>
-                  <option>그림</option>
-                  <option>기획</option>
-                </select>
+                <input id="todoCat" class="todo-catsel" placeholder="분류 (선택)" list="todoCatList" autocomplete="off">
               </div>
             </div>
 
@@ -714,10 +709,8 @@
                 <div class="ev-row2">
                   <input id="evDate" type="date" class="ev-field">
                   <input id="evTime" type="time" class="ev-field">
-                  <select id="evCat" class="todo-catsel">
-                    <option value="">분류</option>
-                    <option>커미션</option><option>코딩</option><option>그림</option><option>기획</option>
-                  </select>
+                  <input id="evCat" class="ev-field" placeholder="분류 (선택)" list="evCatList" autocomplete="off">
+                  <datalist id="evCatList"></datalist>
                 </div>
                 <label class="ev-deadline"><input type="checkbox" id="evDeadline"> 마감일로 표시 (D-day에 추가)</label>
                 <div class="ev-actions">
@@ -1171,6 +1164,7 @@
     document.getElementById('todoInputWrap').style.display='none';
     document.getElementById('todoAddBtn').style.display='flex';
     document.getElementById('todoInput').value='';
+    const tc=document.getElementById('todoCat'); if(tc) tc.value='';
   }
   async function onTodoKey(e){
     if(e.key==='Escape'){ hideTodoInput(); return; }
@@ -1327,6 +1321,20 @@
       return;
     }
     const all=await moa.event.list(today.slice(0,7));
+    // 분류 자동완성 목록 채우기 (기존 일정 + 트래커 카테고리)
+    try {
+      const dl=document.getElementById('evCatList');
+      if(dl){
+        const cats=new Set();
+        // 그달 일정뿐 아니라 전체 일정에서 수집
+        const every=await moa.event.list();
+        (every||[]).forEach(e=>{ if(e.category) cats.add(e.category); });
+        if(moa.tracker && moa.tracker.categories){
+          (await moa.tracker.categories()||[]).forEach(c=>cats.add(c));
+        }
+        dl.innerHTML=[...cats].map(c=>`<option value="${escapeAttr(c)}">`).join('');
+      }
+    } catch(_){}
     const todays=all.filter(e=>e.date===today).sort((a,b)=>((a.time||'99:99')>(b.time||'99:99')?1:-1));
     if(!todays.length){ list.innerHTML='<div class="todo-empty">오늘 일정이 없어요.</div>'; return; }
     const nowHM=new Date().toTimeString().slice(0,5);
