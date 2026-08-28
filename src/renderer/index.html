@@ -307,7 +307,7 @@
   .mgoal-input{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--point);border-radius:var(--r);background:var(--surface-2);margin-bottom:12px}
   .mg-row2{display:flex;gap:6px}
   .mg-hint{font-size:10px;color:var(--ink-3)}
-  .mgoal-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .mgoal-list{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .mgoal-card{border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--surface)}
   .mgc-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
   .mgc-head .mgc-ic{width:30px;height:30px;border-radius:8px;background:var(--point-soft);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
@@ -352,7 +352,7 @@
   .review-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
   /* 2분할 레이아웃 */
   .review-split{display:grid;grid-template-columns:minmax(240px,300px) 1fr;gap:18px;align-items:start}
-  .review-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:4px}
+  .review-list{display:flex;flex-direction:column;gap:8px}
   .rvl-day{border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;background:var(--surface)}
   .rvl-day-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}
   .rvl-date{font-size:12px;font-weight:700}
@@ -387,6 +387,7 @@
   .review-empty{text-align:center;font-size:11px;color:var(--ink-4);padding:20px}
   .year-label{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;margin-bottom:12px}
   .year-label .mi{font-size:18px;color:var(--ink-3)}
+  @media (max-width:1100px){ .mgoal-list{grid-template-columns:1fr 1fr} }
   @media (max-width:768px){ .mgoal-list{grid-template-columns:1fr} }
   .mp-bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
   .mp-bar>i{display:block;height:100%;border-radius:3px;background:var(--point)}
