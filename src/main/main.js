@@ -228,7 +228,7 @@ function registerIpc() {
     const rows = D().prepare(`
       SELECT * FROM todo
       WHERE done = 0
-         OR (done = 1 AND date(done_at, 'localtime') = date('now','localtime'))
+         OR (done = 1 AND date(done_at) = date('now','localtime'))
       ORDER BY done, sort_order, id
     `).all();
     const today = new Date().toLocaleDateString('sv'); // YYYY-MM-DD
@@ -262,7 +262,7 @@ function registerIpc() {
   ipcMain.handle('todo:doneOn', (_e, ymd) =>
     D().prepare(`
       SELECT * FROM todo
-      WHERE done=1 AND date(done_at,'localtime') = ?
+      WHERE done=1 AND date(done_at) = ?
       ORDER BY done_at
     `).all(ymd));
 
