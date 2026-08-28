@@ -166,31 +166,46 @@ app.whenReady().then(() => {
 });
 
 // ── 자동 업데이트 (깃허브 릴리스에서 새 버전 감지) ──
+let _autoUpdater = null;
 function setupAutoUpdate() {
   // 개발 모드(--dev)나 패키징 안 된 상태에선 스킵
   if (isDev || !app.isPackaged) return;
-  let autoUpdater;
+  let autoUpdater, log;
   try {
     ({ autoUpdater } = require('electron-updater'));
   } catch (_) {
     return; // 모듈 없으면 조용히 스킵
   }
-  autoUpdater.autoDownload = true;            // 새 버전 있으면 자동 다운로드
-  autoUpdater.autoInstallOnAppQuit = true;    // 앱 종료 시 설치
+  // 로그 파일 남기기 (electron-log가 있으면)
+  try {
+    log = require('electron-log');
+    log.transports.file.level = 'info';
+    autoUpdater.logger = log;
+    log.info('=== 앱 시작, 자동 업데이트 로거 연결됨 ===');
+  } catch (_) { /* 로그 모듈 없어도 계속 */ }
 
+  _autoUpdater = autoUpdater;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  // 렌더러로 상태 보내기 (진단 UI에서 표시)
+  const send = (status, data) => {
+    if (win && !win.isDestroyed()) win.webContents.send('update:status', { status, data });
+  };
+  autoUpdater.on('checking-for-update', () => send('checking'));
+  autoUpdater.on('update-available', (info) => send('available', info && info.version));
+  autoUpdater.on('update-not-available', (info) => send('latest', info && info.version));
+  autoUpdater.on('download-progress', (p) => send('downloading', Math.round(p.percent)));
   autoUpdater.on('update-downloaded', (info) => {
-    // 다 받으면 트레이 툴팁으로 살짝 알림 (강제 재시작 안 함 — 다음에 껐다 켜면 적용)
-    if (tray) tray.setToolTip(`모아보드 · 업데이트 준비됨 (재시작 시 적용)`);
-    if (win && !win.isDestroyed()) {
-      win.webContents.send('update:ready', info && info.version);
-    }
+    if (tray) tray.setToolTip('모아보드 · 업데이트 준비됨 (재시작 시 적용)');
+    send('ready', info && info.version);
+    if (win && !win.isDestroyed()) win.webContents.send('update:ready', info && info.version);
   });
-  autoUpdater.on('error', () => { /* 업데이트 실패는 조용히 무시 (앱 사용엔 지장 없음) */ });
+  autoUpdater.on('error', (err) => send('error', String(err && err.message || err)));
 
-  // 시작 직후 한 번 체크 + 이후 6시간마다
   const check = () => { autoUpdater.checkForUpdates().catch(() => {}); };
-  setTimeout(check, 8000);                      // 시작 8초 뒤 (초기 로딩 방해 안 하게)
-  setInterval(check, 6 * 60 * 60 * 1000);       // 6시간마다
+  setTimeout(check, 8000);
+  setInterval(check, 6 * 60 * 60 * 1000);
 }
 
 app.on('window-all-closed', (e) => {
@@ -420,6 +435,22 @@ function registerIpc() {
     const catTotals = {};
     for (const r of workRows) catTotals[r.category] = (catTotals[r.category] || 0) + r.secs;
     return { days: byDay, totalSecs, totalTodos, catTotals };
+  });
+
+  // 앱 버전 + 자동 업데이트 수동 확인
+  ipcMain.handle('app:version', () => app.getVersion());
+  ipcMain.handle('app:isPackaged', () => app.isPackaged);
+  ipcMain.handle('update:check', async () => {
+    if (!_autoUpdater) {
+      // 개발 모드거나 업데이터 없음
+      return { ok: false, reason: !app.isPackaged ? 'dev' : 'no-updater' };
+    }
+    try {
+      const r = await _autoUpdater.checkForUpdates();
+      return { ok: true, version: r && r.updateInfo && r.updateInfo.version };
+    } catch (e) {
+      return { ok: false, reason: 'error', message: String(e && e.message || e) };
+    }
   });
 
   // 설정

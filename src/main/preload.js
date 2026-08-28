@@ -14,6 +14,15 @@ contextBridge.exposeInMainWorld('moa', {
 
   // 자동 업데이트: 새 버전 다운로드 완료 알림
   onUpdateReady: (cb) => ipcRenderer.on('update:ready', (_e, version) => cb(version)),
+  // 앱 버전 + 업데이트 수동 확인 + 상태 구독
+  app: {
+    version: () => ipcRenderer.invoke('app:version'),
+    isPackaged: () => ipcRenderer.invoke('app:isPackaged'),
+  },
+  update: {
+    check: () => ipcRenderer.invoke('update:check'),
+    onStatus: (cb) => ipcRenderer.on('update:status', (_e, s) => cb(s)),
+  },
 
   // 워크 트래커
   tracker: {

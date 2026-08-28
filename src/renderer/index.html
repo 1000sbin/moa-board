@@ -77,6 +77,17 @@
   .mode-btn:hover{border-color:var(--ink-4);color:var(--ink-2)}
   .mode-btn.on{background:var(--point-soft);border-color:var(--point);color:var(--point);font-weight:600}
   .color-label{font-size:10px;font-weight:600;color:var(--ink-4);letter-spacing:0.04em;text-transform:uppercase;padding:0 2px 7px}
+  .ver-box{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .ver-row{display:flex;align-items:center;gap:8px}
+  .ver-label{font-size:10.5px;color:var(--ink-3);flex:1}
+  .ver-label b{color:var(--ink-2);font-weight:600}
+  .ver-check{font-family:var(--font);font-size:10px;font-weight:600;color:var(--point);background:var(--point-soft);border:none;border-radius:6px;padding:5px 9px;cursor:pointer;flex:0 0 auto}
+  .ver-check:hover{filter:brightness(.96)}
+  .ver-check:disabled{opacity:.5;cursor:default}
+  .ver-status{font-size:10px;color:var(--ink-4);margin-top:7px;line-height:1.4;min-height:0}
+  .ver-status.ok{color:var(--ink-3)}
+  .ver-status.new{color:var(--point);font-weight:600}
+  .ver-status.err{color:#e05656}
   .theme-pick{display:flex;gap:8px;justify-content:center}
   .theme-pick i{width:15px;height:15px;border-radius:50%;cursor:pointer;transition:transform .15s;border:1.5px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
   .theme-pick i:hover{transform:scale(1.15)}
@@ -630,6 +641,15 @@
             <span class="mi">colorize</span>
             <input type="color" id="customColor" value="#ff4d8d" oninput="setPointColor(this.value)">
           </label>
+        </div>
+
+        <!-- 버전 + 업데이트 확인 -->
+        <div class="ver-box">
+          <div class="ver-row">
+            <span class="ver-label">버전 <b id="appVer">–</b></span>
+            <button class="ver-check" id="verCheckBtn" onclick="checkUpdate()">업데이트 확인</button>
+          </div>
+          <div class="ver-status" id="verStatus"></div>
         </div>
       </div>
     </aside>
@@ -1757,6 +1777,48 @@
   function reviewPrev(){ _reviewMonth--; if(_reviewMonth<0){_reviewMonth=11;_reviewYear--;} renderReview(); }
   function reviewNext(){ _reviewMonth++; if(_reviewMonth>11){_reviewMonth=0;_reviewYear++;} renderReview(); }
 
+  // ── 업데이트 확인 (수동) ──
+  function setVerStatus(text, cls){
+    const el=document.getElementById('verStatus');
+    if(!el) return;
+    el.textContent=text;
+    el.className='ver-status'+(cls?' '+cls:'');
+  }
+  async function checkUpdate(){
+    if(!_todoBridge || !moa.update){ setVerStatus('앱에서만 확인할 수 있어요',''); return; }
+    const btn=document.getElementById('verCheckBtn');
+    if(btn) btn.disabled=true;
+    setVerStatus('확인 중…','');
+    try{
+      const r=await moa.update.check();
+      if(r.ok){
+        // 상태 이벤트(update:status)가 상세를 채워줌. 여기선 기본만.
+        // available/latest는 이벤트에서 처리됨
+      } else if(r.reason==='dev'){
+        setVerStatus('개발 모드에선 업데이트를 확인하지 않아요','');
+      } else if(r.reason==='no-updater'){
+        setVerStatus('이 빌드에선 자동 업데이트를 쓸 수 없어요','');
+      } else {
+        setVerStatus('확인 중 문제가 생겼어요: '+(r.message||''),'err');
+      }
+    }catch(e){
+      setVerStatus('확인 실패: '+e,'err');
+    }finally{
+      if(btn) btn.disabled=false;
+    }
+  }
+  function showUpdateStatus(s){
+    if(!s) return;
+    switch(s.status){
+      case 'checking': setVerStatus('새 버전 확인 중…',''); break;
+      case 'available': setVerStatus(`새 버전 v${s.data} 발견! 받는 중…`,'new'); break;
+      case 'latest': setVerStatus('최신 버전을 쓰고 있어요 ✓','ok'); break;
+      case 'downloading': setVerStatus(`새 버전 받는 중… ${s.data}%`,'new'); break;
+      case 'ready': setVerStatus(`새 버전 v${s.data} 준비됨! 다음 실행 때 적용돼요`,'new'); break;
+      case 'error': setVerStatus('업데이트 확인 중 문제: '+(s.data||''),'err'); break;
+    }
+  }
+
   async function renderGoals(){
     if(!_todoBridge){
       const grid=document.getElementById('goalGrid');
@@ -2127,7 +2189,14 @@
         setTimeout(()=>{ t.style.transition='opacity .4s'; t.style.opacity='0'; setTimeout(()=>t.remove(),400); }, 6000);
       });
     }
-    // 진행중일 때 초 단위로 부드럽게 올리기 (push는 5초 간격이라 사이 보간)
+    // 앱 버전 표시
+    if(moa.app && moa.app.version){
+      moa.app.version().then(v=>{ const el=document.getElementById('appVer'); if(el) el.textContent='v'+v; });
+    }
+    // 업데이트 상태 실시간 표시
+    if(moa.update && moa.update.onStatus){
+      moa.update.onStatus(s=>showUpdateStatus(s));
+    }
     let _lastActive = false;
     moa.tracker.onUpdate(s=>{ _lastActive = s && s.active; });
     moa.tracker.status().then(s=>{ _lastActive = s && s.active; });
