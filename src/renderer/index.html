@@ -291,13 +291,14 @@
   .mp-top b{font-size:26px;font-weight:700;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
   .mp-top span{font-size:11px;color:var(--ink-3);font-weight:500}
   /* 메인 월간 목표 미니 요약 */
-  .mgoal-mini{margin-top:12px;display:flex;flex-direction:column;gap:9px}
-  .mgoal-mini .mgm{display:flex;align-items:center;gap:8px}
-  .mgoal-mini .mgm .mgm-nm{font-size:10.5px;color:var(--ink-2);flex:0 0 auto;width:70px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:4px}
-  .mgoal-mini .mgm .mgm-nm .mi{font-size:13px;color:var(--ink-3)}
-  .mgoal-mini .mgm .mgm-bar{flex:1;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
-  .mgoal-mini .mgm .mgm-bar>i{display:block;height:100%;border-radius:2px;background:var(--point)}
-  .mgoal-mini .mgm .mgm-v{font-size:9.5px;color:var(--ink-3);font-weight:600;flex:0 0 auto;font-variant-numeric:tabular-nums}
+  .mgoal-mini{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+  .mgoal-mini .mgm{display:flex;flex-direction:column;gap:6px}
+  .mgoal-mini .mgm .mgm-top{display:flex;align-items:center;gap:8px}
+  .mgoal-mini .mgm .mgm-nm{font-size:11.5px;color:var(--ink);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;min-width:0}
+  .mgoal-mini .mgm .mgm-nm .mi{font-size:14px;color:var(--ink-3);flex:0 0 auto}
+  .mgoal-mini .mgm .mgm-bar{width:100%;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+  .mgoal-mini .mgm .mgm-bar>i{display:block;height:100%;border-radius:3px;background:var(--point)}
+  .mgoal-mini .mgm .mgm-v{font-size:10.5px;color:var(--ink-2);font-weight:700;flex:0 0 auto;font-variant-numeric:tabular-nums}
   .mgoal-mini .mgm-empty{font-size:10.5px;color:var(--ink-4);text-align:center;padding:4px 0}
 
   /* 연간 탭: 이번 달 목표 섹션 */
@@ -1702,9 +1703,11 @@
       if(!goals.length){ mini.innerHTML='<div class="mgm-empty">이번 달 목표를 세워보세요</div>'; }
       else mini.innerHTML=goals.slice(0,3).map(g=>`
         <div class="mgm">
-          <div class="mgm-nm"><span class="mi">${g.icon||mgIconFor[g.type]}</span>${escapeHtml(g.title)}</div>
+          <div class="mgm-top">
+            <div class="mgm-nm"><span class="mi">${g.icon||mgIconFor[g.type]}</span>${escapeHtml(g.title)}</div>
+            <div class="mgm-v">${g.pct}%</div>
+          </div>
           <div class="mgm-bar"><i style="width:${g.pct}%"></i></div>
-          <div class="mgm-v">${g.pct}%</div>
         </div>`).join('');
     }
 
@@ -2592,27 +2595,32 @@
         const handle=item.querySelector(handleSelector);
         if(handle){
           handle.style.cursor='grab';
-          handle.addEventListener('mousedown', ()=>item.setAttribute('draggable','true'));
+          handle.addEventListener('mousedown', e=>{ e.stopPropagation(); item.setAttribute('draggable','true'); });
           handle.addEventListener('mouseup', ()=>item.setAttribute('draggable','false'));
         }
       } else {
         item.setAttribute('draggable','true');
       }
       item.addEventListener('dragstart', e=>{
+        e.stopPropagation();               // 부모 드래그 목록으로 전파 방지 (중첩 대응)
         dragEl=item; item.classList.add('dragging');
         e.dataTransfer.effectAllowed='move';
       });
-      item.addEventListener('dragend', ()=>{
+      item.addEventListener('dragend', e=>{
+        e.stopPropagation();
         item.classList.remove('dragging');
         if(handleSelector) item.setAttribute('draggable','false');
+        if(!dragEl){ return; }             // 내가 시작한 드래그가 아니면 무시
         dragEl=null;
         const ids=[...container.querySelectorAll(itemSelector)].map(x=>Number(x.getAttribute('data-id')));
         onReorder(ids);
       });
     });
     container.addEventListener('dragover', e=>{
-      e.preventDefault();
+      // 이 컨테이너에서 시작된 드래그가 아닐 땐 아무것도 하지 않음 (남의 아이템 무시)
       if(!dragEl) return;
+      e.preventDefault();
+      e.stopPropagation();
       const after=getDragAfter(container, itemSelector, e.clientY, e.clientX);
       if(after==null) container.appendChild(dragEl);
       else container.insertBefore(dragEl, after);
