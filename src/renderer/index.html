@@ -319,6 +319,43 @@
   .mgc-auto{font-size:9.5px;color:var(--ink-4);font-style:italic}
   .mgoal-empty{grid-column:1/-1;font-size:11.5px;color:var(--ink-3);text-align:center;padding:20px;border:1px dashed var(--line);border-radius:var(--r)}
   .section-divider{height:1px;background:var(--line);margin:20px 0}
+  /* 돌아보기 (월별 회고) */
+  .review-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .review-nav{display:flex;align-items:center;gap:10px}
+  .review-nav b{font-size:13px;font-weight:600;min-width:88px;text-align:center}
+  .review-nav button{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .review-nav button:hover{border-color:var(--point);color:var(--point)}
+  .review-nav button .mi{font-size:17px}
+  .review-summary{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+  .rv-stat{flex:1;min-width:120px;border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;background:var(--surface)}
+  .rv-stat .rv-num{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+  .rv-stat .rv-lb{font-size:10.5px;color:var(--ink-3);margin-top:2px}
+  .rv-cats{display:flex;flex-direction:column;gap:5px;margin-top:2px}
+  .rv-cat{display:flex;align-items:center;gap:6px;font-size:10.5px}
+  .rv-cat .rv-cat-nm{color:var(--ink-2);flex:0 0 auto;min-width:56px}
+  .rv-cat .rv-cat-bar{flex:1;height:5px;border-radius:3px;background:var(--line);overflow:hidden}
+  .rv-cat .rv-cat-bar>i{display:block;height:100%;background:var(--point);border-radius:3px}
+  .rv-cat .rv-cat-v{color:var(--ink-3);font-weight:600;flex:0 0 auto}
+  .review-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+  .review-dow span{text-align:center;font-size:9.5px;color:var(--ink-4);font-weight:600}
+  .review-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .rc-cell{aspect-ratio:1;border-radius:7px;background:var(--surface-2);border:1px solid var(--line);position:relative;cursor:default;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:.1s}
+  .rc-cell.has:hover{transform:scale(1.08);z-index:2;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+  .rc-cell.out{visibility:hidden}
+  .rc-cell .rc-num{font-size:9px;color:var(--ink-3);position:absolute;top:3px;left:5px}
+  .rc-cell.lv3 .rc-num,.rc-cell.lv4 .rc-num{color:#fff}
+  .rc-cell.lv1{background:var(--point-dim);border-color:var(--point-dim)}
+  .rc-cell.lv2{background:var(--point-soft);border-color:var(--point-soft)}
+  .rc-cell.lv3{background:var(--point);opacity:.6;border-color:transparent}
+  .rc-cell.lv4{background:var(--point);border-color:transparent}
+  .rc-cell .rc-todo{position:absolute;bottom:3px;font-size:8px;font-weight:700;color:var(--point)}
+  .rc-cell.lv3 .rc-todo,.rc-cell.lv4 .rc-todo{color:#fff}
+  .rc-cell .rc-hrs{font-size:9px;font-weight:600;color:var(--ink-2)}
+  .rc-cell.lv3 .rc-hrs,.rc-cell.lv4 .rc-hrs{color:#fff}
+  .review-legend{display:flex;align-items:center;gap:5px;justify-content:flex-end;margin-top:10px}
+  .review-legend .rl-label{font-size:9.5px;color:var(--ink-4);display:inline-flex;align-items:center;gap:3px}
+  .review-legend .rl-box{width:13px;height:13px;border-radius:3px;display:inline-block}
+  .review-empty{text-align:center;font-size:11px;color:var(--ink-4);padding:20px}
   .year-label{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;margin-bottom:12px}
   .year-label .mi{font-size:18px;color:var(--ink-3)}
   @media (max-width:768px){ .mgoal-list{grid-template-columns:1fr} }
@@ -777,6 +814,32 @@
             </div>
           </div>
           <div class="mgoal-list" id="mgoalList"></div>
+        </div>
+
+        <div class="section-divider"></div>
+        <!-- 돌아보기: 월별 작업시간 + 완료 할일 -->
+        <div class="review-section">
+          <div class="review-head">
+            <div class="year-label" style="margin:0"><span class="mi">history</span> 돌아보기</div>
+            <div class="review-nav">
+              <button onclick="reviewPrev()"><span class="mi">chevron_left</span></button>
+              <b id="reviewMonthLabel">2026년 8월</b>
+              <button onclick="reviewNext()"><span class="mi">chevron_right</span></button>
+            </div>
+          </div>
+          <div class="review-summary" id="reviewSummary"></div>
+          <div class="review-cal-wrap">
+            <div class="review-dow"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+            <div class="review-cal" id="reviewCal"></div>
+          </div>
+          <div class="review-legend">
+            <span class="rl-label">작업 적음</span>
+            <i class="rl-box" style="background:var(--point-dim)"></i>
+            <i class="rl-box" style="background:var(--point-soft)"></i>
+            <i class="rl-box" style="opacity:.55;background:var(--point)"></i>
+            <i class="rl-box" style="background:var(--point)"></i>
+            <span class="rl-label">많음 · <span class="mi" style="font-size:12px;color:var(--point)">check_circle</span> 완료한 할 일</span>
+          </div>
         </div>
 
         <div class="section-divider"></div>
@@ -1498,6 +1561,102 @@
   }
 
   // ── 연간 목표 (마일스톤 완료율 자동) ──
+  // ── 돌아보기 (월별 작업시간 + 완료 할일) ──
+  let _reviewYear, _reviewMonth; // month: 0~11
+  (function initReview(){ const n=new Date(); _reviewYear=n.getFullYear(); _reviewMonth=n.getMonth(); })();
+
+  function fmtHours(secs){
+    const h=Math.floor(secs/3600), m=Math.round((secs%3600)/60);
+    if(h===0 && m===0) return '0';
+    if(h===0) return `${m}분`;
+    if(m===0) return `${h}시간`;
+    return `${h}시간 ${m}분`;
+  }
+  function fmtHoursShort(secs){
+    const h=secs/3600;
+    if(h>=1) return h.toFixed(h>=10?0:1)+'h';
+    const m=Math.round(secs/60);
+    return m>0?m+'m':'';
+  }
+  // 작업시간 → 레벨 0~4 (최대값 대비 상대)
+  function workLevel(secs, maxSecs){
+    if(secs<=0) return 0;
+    if(maxSecs<=0) return 1;
+    const r=secs/maxSecs;
+    if(r>0.75) return 4;
+    if(r>0.5) return 3;
+    if(r>0.25) return 2;
+    return 1;
+  }
+
+  async function renderReview(){
+    const label=document.getElementById('reviewMonthLabel');
+    if(label) label.textContent=`${_reviewYear}년 ${_reviewMonth+1}월`;
+    const cal=document.getElementById('reviewCal');
+    const summary=document.getElementById('reviewSummary');
+    if(!_todoBridge || !moa.review){
+      if(cal) cal.innerHTML='<div class="review-empty" style="grid-column:1/-1">앱에서 기록을 볼 수 있어요</div>';
+      if(summary) summary.innerHTML='';
+      return;
+    }
+    const ym=`${_reviewYear}-${String(_reviewMonth+1).padStart(2,'0')}`;
+    const data=await moa.review.month(ym);
+    const days=data.days||{};
+    // 최대 작업시간 (색농도 기준)
+    const maxSecs=Math.max(0,...Object.values(days).map(d=>d.secs));
+
+    // 상단 요약: 총 작업시간, 완료 할일, 카테고리별
+    const catArr=Object.entries(data.catTotals||{}).sort((a,b)=>b[1]-a[1]);
+    const catMax=catArr.length?catArr[0][1]:0;
+    if(summary){
+      summary.innerHTML=`
+        <div class="rv-stat"><div class="rv-num">${fmtHours(data.totalSecs)}</div><div class="rv-lb">이번 달 작업 시간</div></div>
+        <div class="rv-stat"><div class="rv-num">${data.totalTodos}<span style="font-size:12px;color:var(--ink-3)">개</span></div><div class="rv-lb">완료한 할 일</div></div>
+        <div class="rv-stat" style="flex:1.4">
+          <div class="rv-lb" style="margin-bottom:6px">카테고리별</div>
+          <div class="rv-cats">
+            ${catArr.length?catArr.slice(0,4).map(([nm,secs])=>`
+              <div class="rv-cat">
+                <span class="rv-cat-nm">${escapeHtml(nm)}</span>
+                <span class="rv-cat-bar"><i style="width:${catMax?Math.round(secs/catMax*100):0}%"></i></span>
+                <span class="rv-cat-v">${fmtHoursShort(secs)}</span>
+              </div>`).join(''):'<div class="rv-cat" style="color:var(--ink-4)">기록 없음</div>'}
+          </div>
+        </div>`;
+    }
+
+    // 달력
+    if(cal){
+      const first=new Date(_reviewYear,_reviewMonth,1);
+      const startDow=first.getDay();
+      const daysInMonth=new Date(_reviewYear,_reviewMonth+1,0).getDate();
+      let html='';
+      for(let i=0;i<startDow;i++) html+='<div class="rc-cell out"></div>';
+      for(let d=1;d<=daysInMonth;d++){
+        const ymd=`${ym}-${String(d).padStart(2,'0')}`;
+        const info=days[ymd];
+        const secs=info?info.secs:0;
+        const todos=info?info.todos:0;
+        const lv=workLevel(secs,maxSecs);
+        const has=secs>0||todos>0;
+        const hrs=secs>0?fmtHoursShort(secs):'';
+        let tip='';
+        if(has){
+          const catStr=info&&Object.keys(info.byCat).length?Object.entries(info.byCat).map(([c,s])=>`${c} ${fmtHoursShort(s)}`).join(', '):'';
+          tip=`${d}일 · ${secs>0?fmtHours(secs):'작업 없음'}${todos>0?` · 할일 ${todos}개`:''}${catStr?` (${catStr})`:''}`;
+        }
+        html+=`<div class="rc-cell ${has?'has':''} lv${lv}" ${tip?`title="${escapeAttr(tip)}"`:''}>
+          <span class="rc-num">${d}</span>
+          ${hrs?`<span class="rc-hrs">${hrs}</span>`:''}
+          ${todos>0?`<span class="rc-todo">✓${todos}</span>`:''}
+        </div>`;
+      }
+      cal.innerHTML=html;
+    }
+  }
+  function reviewPrev(){ _reviewMonth--; if(_reviewMonth<0){_reviewMonth=11;_reviewYear--;} renderReview(); }
+  function reviewNext(){ _reviewMonth++; if(_reviewMonth>11){_reviewMonth=0;_reviewYear++;} renderReview(); }
+
   async function renderGoals(){
     if(!_todoBridge){
       const grid=document.getElementById('goalGrid');
@@ -1782,6 +1941,7 @@
   renderHabits();
   renderMgoals();
   renderGoals();
+  renderReview();
   renderMemos();
   refreshSummary();
   // 테마 기본 표시 (저장값은 브릿지 연결 시 덮어씀)

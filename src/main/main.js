@@ -384,6 +384,43 @@ function registerIpc() {
     D().prepare('UPDATE milestone SET done = 1 - done WHERE id=?').run(id).changes);
   ipcMain.handle('milestone:delete', (_e, id) => D().prepare('DELETE FROM milestone WHERE id=?').run(id).changes);
 
+  // 월별 회고: 특정 월(YYYY-MM)의 날짜별 작업시간 + 완료 할일 집계
+  ipcMain.handle('review:month', (_e, ym) => {
+    // 작업시간: started_at은 UTC(ISO)로 저장되므로 localtime 변환
+    const workRows = D().prepare(`
+      SELECT date(started_at, 'localtime') AS ymd,
+             category,
+             COALESCE(SUM(seconds),0) AS secs
+      FROM work_session
+      WHERE strftime('%Y-%m', started_at, 'localtime') = ?
+      GROUP BY ymd, category
+    `).all(ym);
+    // 완료 할일: done_at은 이미 localtime으로 저장되므로 변환 없이
+    const todoRows = D().prepare(`
+      SELECT date(done_at) AS ymd, COUNT(*) AS cnt
+      FROM todo
+      WHERE done=1 AND strftime('%Y-%m', done_at) = ?
+      GROUP BY ymd
+    `).all(ym);
+    // 날짜별로 합치기
+    const byDay = {};
+    for (const r of workRows) {
+      if (!byDay[r.ymd]) byDay[r.ymd] = { ymd: r.ymd, secs: 0, byCat: {}, todos: 0 };
+      byDay[r.ymd].secs += r.secs;
+      byDay[r.ymd].byCat[r.category] = (byDay[r.ymd].byCat[r.category] || 0) + r.secs;
+    }
+    for (const r of todoRows) {
+      if (!byDay[r.ymd]) byDay[r.ymd] = { ymd: r.ymd, secs: 0, byCat: {}, todos: 0 };
+      byDay[r.ymd].todos = r.cnt;
+    }
+    // 월 합계
+    const totalSecs = workRows.reduce((a, r) => a + r.secs, 0);
+    const totalTodos = todoRows.reduce((a, r) => a + r.cnt, 0);
+    const catTotals = {};
+    for (const r of workRows) catTotals[r.category] = (catTotals[r.category] || 0) + r.secs;
+    return { days: byDay, totalSecs, totalTodos, catTotals };
+  });
+
   // 설정
   ipcMain.handle('setting:get', (_e, key) => D().prepare('SELECT value FROM setting WHERE key=?').get(key)?.value);
   ipcMain.handle('setting:set', (_e, { key, value }) => {

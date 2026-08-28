@@ -93,4 +93,9 @@ contextBridge.exposeInMainWorld('moa', {
     get: (key) => ipcRenderer.invoke('setting:get', key),
     set: (key, value) => ipcRenderer.invoke('setting:set', { key, value }),
   },
+
+  // 월별 회고
+  review: {
+    month: (ym) => ipcRenderer.invoke('review:month', ym),
+  },
 });
