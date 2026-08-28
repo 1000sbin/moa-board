@@ -35,6 +35,13 @@ function migrate() {
       db.exec("ALTER TABLE todo ADD COLUMN done_at TEXT");
     }
   } catch (_) {}
+  // event.end_date (기간 일정) — 없으면 추가
+  try {
+    const cols = db.prepare("PRAGMA table_info(event)").all();
+    if (!cols.some(c => c.name === 'end_date')) {
+      db.exec("ALTER TABLE event ADD COLUMN end_date TEXT");
+    }
+  } catch (_) {}
 }
 
 function createTables() {
@@ -77,7 +84,8 @@ function createTables() {
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       title         TEXT NOT NULL,
       category      TEXT,              -- 커미션 | 코딩 | ...
-      date          TEXT NOT NULL,     -- YYYY-MM-DD
+      date          TEXT NOT NULL,     -- YYYY-MM-DD (시작일)
+      end_date      TEXT,              -- YYYY-MM-DD (종료일, 없으면 하루짜리)
       time          TEXT,              -- HH:MM (선택)
       is_deadline   INTEGER DEFAULT 0, -- 1이면 D-day 대상
       memo          TEXT,

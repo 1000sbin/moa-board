@@ -146,6 +146,11 @@
   .bcal .bd.out{color:var(--ink-4)}
   .bcal .bd.today{background:var(--point);color:#fff;font-weight:700}
   .bcal .bd .ev{font-size:8px;padding:2px 5px;border-radius:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--surface-2);color:var(--ink-2);border-left:2px solid var(--ink-4);max-width:100%;box-sizing:border-box}
+  /* 기간 일정 막대 */
+  .bcal .bd .ev.ev-span{background:var(--point-soft);color:var(--point);border-left:none;border-radius:0;font-weight:600}
+  .bcal .bd .ev.ev-span.span-start{border-radius:4px 0 0 4px;margin-left:0}
+  .bcal .bd .ev.ev-span.span-end{border-radius:0 4px 4px 0}
+  .bcal .bd .ev.ev-span.span-start.span-end{border-radius:4px}
   .bcal .bd .ev-more{font-size:7.5px;color:var(--ink-4);font-weight:600;padding-left:3px;margin-top:1px}
   .bcal .bd .ev.comm{border-left-color:var(--point)}
   .bcal .bd .ev.code{border-left-color:var(--ink)}
@@ -207,7 +212,8 @@
   .todo-empty{font-size:11px;color:var(--ink-3);padding:10px 0;text-align:center}
   /* 일정 입력 폼 */
   .ev-input-wrap{margin-top:8px;display:flex;flex-direction:column;gap:7px;padding:11px;border:1px solid var(--point);border-radius:var(--r-sm);background:var(--surface-2)}
-  .ev-row2{display:flex;gap:6px}
+  .ev-row2{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .ev-dash{color:var(--ink-4);font-size:12px;flex:0 0 auto}
   .ev-field{font-family:var(--font);font-size:11px;border:1px solid var(--line);border-radius:6px;padding:6px 8px;background:var(--surface);color:var(--ink);flex:1;min-width:0}
   .ev-deadline{font-size:10.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px;cursor:pointer}
   .ev-deadline input{width:14px;height:14px;accent-color:var(--point);cursor:pointer}
@@ -733,7 +739,9 @@
               <div class="ev-input-wrap" id="evInputWrap" style="display:none">
                 <input id="evTitle" class="todo-input" placeholder="일정 제목" onkeydown="if(event.key==='Escape')hideEventInput()">
                 <div class="ev-row2">
-                  <input id="evDate" type="date" class="ev-field">
+                  <input id="evDate" type="date" class="ev-field" title="시작일">
+                  <span class="ev-dash">~</span>
+                  <input id="evEndDate" type="date" class="ev-field" title="종료일 (선택)">
                   <input id="evTime" type="time" class="ev-field">
                   <input id="evCat" class="ev-field" placeholder="분류 (선택)" list="evCatList" autocomplete="off">
                   <datalist id="evCatList"></datalist>
@@ -1213,6 +1221,11 @@
   // ── 일정 / D-day: DB 연동 ──
   function todayStr(){ return new Date().toLocaleDateString('sv'); } // YYYY-MM-DD (로컬)
   function fmtDateK(ymd){ const [y,m,d]=ymd.split('-').map(Number); return `${m}월 ${d}일`; }
+  function fmtRange(start,end){
+    const [,sm,sd]=start.split('-').map(Number);
+    const [,em,ed]=end.split('-').map(Number);
+    return `${sm}/${sd} ~ ${em}/${ed}`;
+  }
   function daysUntil(ymd){
     const today=new Date(todayStr()+'T00:00:00');
     const target=new Date(ymd+'T00:00:00');
@@ -1243,7 +1256,22 @@
     let events=[];
     if(_todoBridge){ events=await moa.event.list(ym); }
     const byDate={};
-    events.forEach(e=>{ (byDate[e.date]=byDate[e.date]||[]).push(e); });
+    events.forEach(e=>{
+      if(e.end_date && e.end_date > e.date){
+        // 기간 일정: 시작~종료 모든 날에 추가 (기간 정보 표시용 플래그 포함)
+        let cur = e.date;
+        while(cur <= e.end_date){
+          const isStart = cur === e.date;
+          const isEnd = cur === e.end_date;
+          (byDate[cur]=byDate[cur]||[]).push({ ...e, _span:true, _spanStart:isStart, _spanEnd:isEnd });
+          // 다음 날짜로 (YYYY-MM-DD + 1일)
+          const dt = new Date(cur+'T00:00:00'); dt.setDate(dt.getDate()+1);
+          cur = dt.toLocaleDateString('sv');
+        }
+      } else {
+        (byDate[e.date]=byDate[e.date]||[]).push(e);
+      }
+    });
 
     const cells=[];
     // 앞쪽: 지난달 꼬리
@@ -1264,11 +1292,20 @@
       let html=`<div class="bd-num">${c.day}</div>`;
       if(c.events && c.events.length){
         html+=`<div class="bd-evs">`;
-        // 1개만 제목 표시, 나머지는 +N (칸 높이 고정 유지)
-        const first=c.events[0];
-        const cls = first.is_deadline ? 'comm' : 'code';
-        html+=`<div class="ev ${cls}">${escapeHtml(first.title)}</div>`;
-        if(c.events.length>1) html+=`<div class="ev-more">+${c.events.length-1}</div>`;
+        // 기간 일정 우선 표시 (막대 형태)
+        const spanEv = c.events.find(e=>e._span);
+        if(spanEv){
+          const spanCls = 'ev-span'+(spanEv._spanStart?' span-start':'')+(spanEv._spanEnd?' span-end':'');
+          // 시작일에만 제목, 중간/끝은 이어지는 막대만
+          html+=`<div class="ev ${spanCls}">${spanEv._spanStart?escapeHtml(spanEv.title):'&nbsp;'}</div>`;
+          const others=c.events.length-1;
+          if(others>0) html+=`<div class="ev-more">+${others}</div>`;
+        } else {
+          const first=c.events[0];
+          const cls = first.is_deadline ? 'comm' : 'code';
+          html+=`<div class="ev ${cls}">${escapeHtml(first.title)}</div>`;
+          if(c.events.length>1) html+=`<div class="ev-more">+${c.events.length-1}</div>`;
+        }
         html+=`</div>`;
       }
       el.innerHTML=html;
@@ -1297,6 +1334,7 @@
         <div class="day-item">
           <span class="di-dot" style="${e.is_deadline?'background:var(--point)':''}"></span>
           <span class="di-title">${escapeHtml(e.title)}</span>
+          ${e.end_date&&e.end_date>e.date?`<span class="di-tag">${fmtRange(e.date,e.end_date)}</span>`:''}
           ${e.is_deadline?'<span class="di-tag">마감</span>':''}
           ${e.time?`<span class="di-tag">${escapeHtml(e.time)}</span>`:''}
         </div>`).join('');
@@ -1362,16 +1400,23 @@
         dl.innerHTML=[...cats].map(c=>`<option value="${escapeAttr(c)}">`).join('');
       }
     } catch(_){}
-    const todays=all.filter(e=>e.date===today).sort((a,b)=>((a.time||'99:99')>(b.time||'99:99')?1:-1));
+    // 오늘 날짜이거나, 기간 일정이 오늘을 포함하는 것
+    const todays=all.filter(e=>{
+      if(e.date===today) return true;
+      if(e.end_date && e.date<=today && e.end_date>=today) return true;
+      return false;
+    }).sort((a,b)=>((a.time||'99:99')>(b.time||'99:99')?1:-1));
     if(!todays.length){ list.innerHTML='<div class="todo-empty">오늘 일정이 없어요.</div>'; return; }
     const nowHM=new Date().toTimeString().slice(0,5);
     list.innerHTML=todays.map(e=>{
       const isNow = e.time && e.time<=nowHM;
+      const span = e.end_date && e.end_date>e.date ? fmtRange(e.date,e.end_date) : null;
       return `<div class="sc">
-        <div class="sc-time">${e.time||'—'}</div>
+        <div class="sc-time">${span?'기간':(e.time||'—')}</div>
         <div class="sc-line"><i class="${isNow?'now':''}"></i></div>
         <div class="sc-body">
           <div class="sc-t">${escapeHtml(e.title)}</div>
+          ${span?`<div class="sc-s">${span}</div>`:''}
           ${e.is_deadline?'<div class="sc-s">마감</div>':''}
         </div>
         <button class="row-act" onclick="editEvent(${e.id})" title="수정"><span class="mi">edit</span></button>
@@ -1418,7 +1463,7 @@
     _editingEventId = null;
     document.getElementById('evInputWrap').style.display='none';
     document.getElementById('evAddBtn').style.display='flex';
-    ['evTitle','evTime'].forEach(id=>document.getElementById(id).value='');
+    ['evTitle','evTime','evEndDate'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('evCat').value='';
     document.getElementById('evDeadline').checked=false;
   }
@@ -1433,6 +1478,7 @@
     wrap.style.display='flex';
     document.getElementById('evTitle').value = e.title;
     document.getElementById('evDate').value = e.date;
+    document.getElementById('evEndDate').value = e.end_date || '';
     document.getElementById('evTime').value = e.time || '';
     document.getElementById('evCat').value = e.category || '';
     document.getElementById('evDeadline').checked = !!e.is_deadline;
@@ -1443,9 +1489,13 @@
     if(!_todoBridge){ hideEventInput(); return; }
     const title=document.getElementById('evTitle').value.trim();
     const date=document.getElementById('evDate').value;
+    const endDate=document.getElementById('evEndDate').value || null;
     if(!title||!date){ alert('제목과 날짜는 필수예요.'); return; }
+    // 종료일이 시작일보다 빠르면 막기
+    if(endDate && endDate < date){ alert('종료일이 시작일보다 빨라요.'); return; }
     const payload = {
       title, date,
+      end_date: endDate,
       time: document.getElementById('evTime').value || null,
       category: document.getElementById('evCat').value || null,
       is_deadline: document.getElementById('evDeadline').checked,

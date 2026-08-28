@@ -283,15 +283,25 @@ function registerIpc() {
 
   // 일정 / D-day
   ipcMain.handle('event:list', (_e, month) => {
-    if (month) return D().prepare("SELECT * FROM event WHERE date LIKE ? ORDER BY date,time").all(month + '%');
+    if (month) {
+      // 그달에 시작하거나, 기간 일정이 그달에 걸치는 것 모두 포함
+      const first = month + '-01';
+      const last = month + '-31';
+      return D().prepare(`
+        SELECT * FROM event
+        WHERE (date LIKE ?)
+           OR (end_date IS NOT NULL AND date <= ? AND end_date >= ?)
+        ORDER BY date, time
+      `).all(month + '%', last, first);
+    }
     return D().prepare('SELECT * FROM event ORDER BY date,time').all();
   });
   ipcMain.handle('event:add', (_e, ev) =>
-    D().prepare('INSERT INTO event (title,category,date,time,is_deadline,memo) VALUES (?,?,?,?,?,?)')
-       .run(ev.title, ev.category || null, ev.date, ev.time || null, ev.is_deadline ? 1 : 0, ev.memo || null).lastInsertRowid);
+    D().prepare('INSERT INTO event (title,category,date,end_date,time,is_deadline,memo) VALUES (?,?,?,?,?,?,?)')
+       .run(ev.title, ev.category || null, ev.date, ev.end_date || null, ev.time || null, ev.is_deadline ? 1 : 0, ev.memo || null).lastInsertRowid);
   ipcMain.handle('event:update', (_e, ev) =>
-    D().prepare('UPDATE event SET title=?, category=?, date=?, time=?, is_deadline=?, memo=? WHERE id=?')
-       .run(ev.title, ev.category || null, ev.date, ev.time || null, ev.is_deadline ? 1 : 0, ev.memo || null, ev.id).changes);
+    D().prepare('UPDATE event SET title=?, category=?, date=?, end_date=?, time=?, is_deadline=?, memo=? WHERE id=?')
+       .run(ev.title, ev.category || null, ev.date, ev.end_date || null, ev.time || null, ev.is_deadline ? 1 : 0, ev.memo || null, ev.id).changes);
   ipcMain.handle('event:delete', (_e, id) => D().prepare('DELETE FROM event WHERE id=?').run(id).changes);
   // D-day: 오늘 이후 마감만
   ipcMain.handle('event:ddays', () => {
