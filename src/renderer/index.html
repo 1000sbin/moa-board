@@ -615,6 +615,24 @@
   .day-sec-label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--ink-3);margin-bottom:8px}
   .day-sec-label .mi{font-size:15px;color:var(--point)}
   .day-list{display:flex;flex-direction:column;gap:6px}
+  /* 카테고리 관리 모달 */
+  .cat-tabs{display:flex;gap:6px;margin-bottom:12px}
+  .cat-tab{flex:1;padding:8px;border:1px solid var(--line);border-radius:8px;background:none;color:var(--ink-3);font-family:var(--font);font-size:12px;font-weight:600;cursor:pointer;transition:.12s}
+  .cat-tab:hover{border-color:var(--ink-4)}
+  .cat-tab.on{background:var(--point-soft);border-color:var(--point);color:var(--point)}
+  .cat-hint{font-size:10.5px;color:var(--ink-4);margin-bottom:12px;line-height:1.5}
+  .cat-list{display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto}
+  .cat-row{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+  .cat-row .cat-name{flex:1;font-family:var(--font);font-size:12px;border:1px solid transparent;border-radius:6px;padding:5px 8px;background:transparent;color:var(--ink);min-width:0}
+  .cat-row .cat-name:focus{outline:none;border-color:var(--point);background:var(--surface-2)}
+  .cat-row .cat-count{font-size:10px;color:var(--ink-4);flex:0 0 auto;font-weight:600}
+  .cat-row .cat-del{flex:0 0 auto;width:26px;height:26px;border:none;background:none;border-radius:6px;color:var(--ink-4);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .cat-row .cat-del:hover{background:var(--point-soft);color:var(--point)}
+  .cat-row .cat-del .mi{font-size:15px}
+  .cat-empty{font-size:11px;color:var(--ink-4);text-align:center;padding:24px}
+  .cat-manage-btn{font-size:10px;font-weight:600;color:var(--ink-3);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+  .cat-manage-btn:hover{border-color:var(--point);color:var(--point)}
+  .cat-manage-btn .mi{font-size:13px}
   .day-item{display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:12px;background:var(--surface-2)}
   .day-item .di-dot{width:6px;height:6px;border-radius:50%;flex:0 0 auto;background:var(--point)}
   .day-item.done .di-dot{background:var(--ink-4)}
@@ -741,7 +759,7 @@
 
           <div class="dash-col">
             <div class="card">
-              <div class="ct"><span class="mi">task_alt</span> 오늘 할 일 <span class="more" id="todoCount">0/0</span></div>
+              <div class="ct"><span class="mi">task_alt</span> 오늘 할 일 <span class="more" id="todoCount">0/0</span> <button class="cat-manage-btn" style="margin-left:auto" onclick="openCatModal('todo')"><span class="mi">sell</span> 분류 정리</button></div>
               <div class="todo" id="todoList"></div>
               <datalist id="todoCatList"></datalist>
               <div class="todo-add" id="todoAddBtn" onclick="showTodoInput()"><span class="mi">add</span> 할 일 추가</div>
@@ -752,7 +770,7 @@
             </div>
 
             <div class="card">
-              <div class="ct"><span class="mi">schedule</span> 당일 일정 <span class="more" id="schedDate"></span></div>
+              <div class="ct"><span class="mi">schedule</span> 당일 일정 <span class="more" id="schedDate"></span> <button class="cat-manage-btn" style="margin-left:auto" onclick="openCatModal('event')"><span class="mi">sell</span> 분류 정리</button></div>
               <div class="sched" id="schedList"></div>
               <div class="todo-add" id="evAddBtn" onclick="showEventInput()"><span class="mi">add</span> 일정 추가</div>
               <div class="ev-input-wrap" id="evInputWrap" style="display:none">
@@ -991,6 +1009,25 @@
         <div class="ev-actions" style="margin-top:16px">
           <button class="ev-save" onclick="addEventFromDay()"><span class="mi" style="font-size:16px">add</span> 이 날 일정 추가</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 카테고리 관리 모달 -->
+  <div class="modal-back" id="catModal">
+    <div class="modal">
+      <div class="modal-h">
+        <span class="mi">sell</span>
+        <b>분류 정리</b>
+        <div class="x" onclick="closeCatModal()"><span class="mi">close</span></div>
+      </div>
+      <div class="modal-body">
+        <div class="cat-tabs">
+          <button class="cat-tab on" id="catTabTodo" onclick="switchCatKind('todo')">할 일 분류</button>
+          <button class="cat-tab" id="catTabEvent" onclick="switchCatKind('event')">일정 분류</button>
+        </div>
+        <div class="cat-hint">이름을 바꾸면 그 분류를 쓰는 항목이 전부 바뀌어요. 같은 이름으로 바꾸면 합쳐져요.</div>
+        <div id="catList" class="cat-list"></div>
       </div>
     </div>
   </div>
@@ -2123,6 +2160,7 @@
   }
   document.getElementById('memoModal').addEventListener('click', e=>{ if(e.target.id==='memoModal') closeMemo(); });
   document.getElementById('dayModal').addEventListener('click', e=>{ if(e.target.id==='dayModal') closeDayModal(); });
+  document.getElementById('catModal').addEventListener('click', e=>{ if(e.target.id==='catModal') closeCatModal(); });
 
   // ── 공용 아이콘 피커 ──
   const ICON_CHOICES = [
@@ -2467,6 +2505,51 @@
     await moa.rules.remove(id);
     await loadRules();
     await loadRunningApps();
+  }
+
+  // ── 분류(카테고리) 관리 ──
+  let _catKind = 'todo';
+  function openCatModal(kind){
+    _catKind = kind || 'todo';
+    document.getElementById('catModal').classList.add('on');
+    switchCatKind(_catKind);
+  }
+  function closeCatModal(){
+    document.getElementById('catModal').classList.remove('on');
+    // 닫을 때 관련 화면 새로고침 (변경 반영)
+    if(_todoBridge){ renderTodos(); renderSchedule(); renderCalendar(); renderReview&&renderReview(); }
+  }
+  function switchCatKind(kind){
+    _catKind = kind;
+    document.getElementById('catTabTodo').classList.toggle('on', kind==='todo');
+    document.getElementById('catTabEvent').classList.toggle('on', kind==='event');
+    renderCatList();
+  }
+  async function renderCatList(){
+    const box=document.getElementById('catList');
+    if(!_todoBridge || !moa.category){ box.innerHTML='<div class="cat-empty">앱에서 관리할 수 있어요</div>'; return; }
+    const cats=await moa.category.list(_catKind);
+    if(!cats.length){ box.innerHTML='<div class="cat-empty">아직 분류가 없어요.</div>'; return; }
+    box.innerHTML=cats.map(c=>`
+      <div class="cat-row" data-name="${escapeAttr(c.name)}">
+        <input class="cat-name" value="${escapeAttr(c.name)}" onkeydown="if(event.key==='Enter')this.blur()" onblur="renameCat(this)">
+        <span class="cat-count">${c.count}개</span>
+        <button class="cat-del" title="분류 삭제" onclick="deleteCat('${escapeAttr(c.name)}')"><span class="mi">delete</span></button>
+      </div>`).join('');
+    box.querySelectorAll('.cat-name').forEach(attachArrowConvert);
+  }
+  async function renameCat(input){
+    const row=input.closest('.cat-row');
+    const from=row.getAttribute('data-name');
+    const to=input.value.trim();
+    if(!to || to===from){ input.value=from; return; }
+    await moa.category.rename(_catKind, from, to);
+    await renderCatList();
+  }
+  async function deleteCat(name){
+    if(!confirm(`"${name}" 분류를 없앨까요?\n(항목은 그대로 남고 분류만 지워져요)`)) return;
+    await moa.category.delete(_catKind, name);
+    await renderCatList();
   }
 
   function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }

@@ -112,4 +112,11 @@ contextBridge.exposeInMainWorld('moa', {
   review: {
     month: (ym) => ipcRenderer.invoke('review:month', ym),
   },
+
+  // 카테고리 관리
+  category: {
+    list: (kind) => ipcRenderer.invoke('category:list', kind),
+    rename: (kind, from, to) => ipcRenderer.invoke('category:rename', { kind, from, to }),
+    delete: (kind, name) => ipcRenderer.invoke('category:delete', { kind, name }),
+  },
 });

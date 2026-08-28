@@ -309,6 +309,30 @@ function registerIpc() {
     return D().prepare("SELECT * FROM event WHERE is_deadline=1 AND date >= ? ORDER BY date").all(today);
   });
 
+  // ── 카테고리 관리 (todo / event 각각) ──
+  // 허용 테이블만 (SQL 인젝션 방지)
+  const catTable = (kind) => (kind === 'todo' ? 'todo' : kind === 'event' ? 'event' : null);
+  ipcMain.handle('category:list', (_e, kind) => {
+    const t = catTable(kind); if (!t) return [];
+    return D().prepare(`
+      SELECT category AS name, COUNT(*) AS count
+      FROM ${t}
+      WHERE category IS NOT NULL AND category != ''
+      GROUP BY category
+      ORDER BY count DESC, category
+    `).all();
+  });
+  // 이름 변경 (to가 기존 이름이면 자연히 합쳐짐)
+  ipcMain.handle('category:rename', (_e, { kind, from, to }) => {
+    const t = catTable(kind); if (!t || !from || !to) return 0;
+    return D().prepare(`UPDATE ${t} SET category=? WHERE category=?`).run(to, from).changes;
+  });
+  // 삭제 (분류만 비움, 항목은 유지)
+  ipcMain.handle('category:delete', (_e, { kind, name }) => {
+    const t = catTable(kind); if (!t || !name) return 0;
+    return D().prepare(`UPDATE ${t} SET category=NULL WHERE category=?`).run(name).changes;
+  });
+
   // 습관
   ipcMain.handle('habit:list', () => D().prepare('SELECT * FROM habit ORDER BY sort_order,id').all());
   ipcMain.handle('habit:add', (_e, h) =>
