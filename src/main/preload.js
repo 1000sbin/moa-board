@@ -75,6 +75,7 @@ contextBridge.exposeInMainWorld('moa', {
     save: (m) => ipcRenderer.invoke('memo:save', m),
     archive: (id, archived) => ipcRenderer.invoke('memo:archive', { id, archived }),
     remove: (id) => ipcRenderer.invoke('memo:delete', id),
+    reorder: (ids) => ipcRenderer.invoke('memo:reorder', ids),
   },
 
   // 연간 목표
@@ -83,6 +84,7 @@ contextBridge.exposeInMainWorld('moa', {
     add: (g) => ipcRenderer.invoke('goal:add', g),
     update: (g) => ipcRenderer.invoke('goal:update', g),
     remove: (id) => ipcRenderer.invoke('goal:delete', id),
+    reorder: (ids) => ipcRenderer.invoke('goal:reorder', ids),
     addMilestone: (m) => ipcRenderer.invoke('milestone:add', m),
     toggleMilestone: (id) => ipcRenderer.invoke('milestone:toggle', id),
     removeMilestone: (id) => ipcRenderer.invoke('milestone:delete', id),
@@ -95,6 +97,7 @@ contextBridge.exposeInMainWorld('moa', {
     update: (g) => ipcRenderer.invoke('mgoal:update', g),
     step: (id, delta) => ipcRenderer.invoke('mgoal:step', { id, delta }),
     remove: (id) => ipcRenderer.invoke('mgoal:delete', id),
+    reorder: (ids) => ipcRenderer.invoke('mgoal:reorder', ids),
   },
 
   // 설정

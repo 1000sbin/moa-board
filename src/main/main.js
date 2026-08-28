@@ -364,7 +364,7 @@ function registerIpc() {
   ipcMain.handle('mgoal:delete', (_e, id) => D().prepare('DELETE FROM month_goal WHERE id=?').run(id).changes);
 
   // 메모
-  ipcMain.handle('memo:list', () => D().prepare('SELECT * FROM memo WHERE COALESCE(archived,0)=0 ORDER BY updated_at DESC').all());
+  ipcMain.handle('memo:list', () => D().prepare('SELECT * FROM memo WHERE COALESCE(archived,0)=0 ORDER BY sort_order, updated_at DESC').all());
   ipcMain.handle('memo:listArchived', () => D().prepare('SELECT * FROM memo WHERE archived=1 ORDER BY updated_at DESC').all());
   ipcMain.handle('memo:save', (_e, m) => {
     if (m.id) {
@@ -382,7 +382,7 @@ function registerIpc() {
 
   // 연간 목표 (진행률 = 마일스톤 완료율 자동)
   ipcMain.handle('goal:list', () => {
-    const goals = D().prepare('SELECT * FROM goal ORDER BY id').all();
+    const goals = D().prepare('SELECT * FROM goal ORDER BY sort_order, id').all();
     const ms = D().prepare('SELECT * FROM milestone ORDER BY goal_id,sort_order,id').all();
     return goals.map(g => {
       const mine = ms.filter(m => m.goal_id === g.id);
@@ -446,6 +446,16 @@ function registerIpc() {
     for (const r of workRows) catTotals[r.category] = (catTotals[r.category] || 0) + r.secs;
     return { days: byDay, totalSecs, totalTodos, catTotals };
   });
+
+  // 드래그 순서 저장 (id 배열을 받아 순서대로 sort_order 부여)
+  const makeReorder = (table) => (_e, ids) => {
+    const stmt = D().prepare(`UPDATE ${table} SET sort_order=? WHERE id=?`);
+    ids.forEach((id, i) => stmt.run(i, id));
+    return true;
+  };
+  ipcMain.handle('memo:reorder', makeReorder('memo'));
+  ipcMain.handle('mgoal:reorder', makeReorder('month_goal'));
+  ipcMain.handle('goal:reorder', makeReorder('goal'));
 
   // 앱 버전 + 자동 업데이트 수동 확인
   ipcMain.handle('app:version', () => app.getVersion());

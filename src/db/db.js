@@ -42,6 +42,22 @@ function migrate() {
       db.exec("ALTER TABLE event ADD COLUMN end_date TEXT");
     }
   } catch (_) {}
+  // memo.sort_order / goal.sort_order (드래그 순서) — 없으면 추가
+  try {
+    const cols = db.prepare("PRAGMA table_info(memo)").all();
+    if (!cols.some(c => c.name === 'sort_order')) {
+      db.exec("ALTER TABLE memo ADD COLUMN sort_order INTEGER DEFAULT 0");
+      // 기존 메모: 최신순 기준으로 초기 순서 부여
+      db.exec("UPDATE memo SET sort_order = id");
+    }
+  } catch (_) {}
+  try {
+    const cols = db.prepare("PRAGMA table_info(goal)").all();
+    if (!cols.some(c => c.name === 'sort_order')) {
+      db.exec("ALTER TABLE goal ADD COLUMN sort_order INTEGER DEFAULT 0");
+      db.exec("UPDATE goal SET sort_order = id");
+    }
+  } catch (_) {}
 }
 
 function createTables() {
@@ -114,6 +130,7 @@ function createTables() {
       body          TEXT,
       tag           TEXT,
       archived      INTEGER DEFAULT 0,
+      sort_order    INTEGER DEFAULT 0,
       updated_at    TEXT DEFAULT (datetime('now','localtime'))
     );
 
@@ -123,7 +140,8 @@ function createTables() {
       title         TEXT NOT NULL,
       subtitle      TEXT,
       year          INTEGER,
-      progress      INTEGER DEFAULT 0  -- 0~100
+      progress      INTEGER DEFAULT 0,  -- 0~100
+      sort_order    INTEGER DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS milestone (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,

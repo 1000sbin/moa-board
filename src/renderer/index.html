@@ -320,6 +320,14 @@
   .mg-hint{font-size:10px;color:var(--ink-3)}
   .mgoal-list{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
   .mgoal-card{border:1px solid var(--line);border-radius:var(--r);padding:14px;background:var(--surface)}
+  /* 드래그 중 표시 */
+  .memo-note.dragging,.mgoal-card.dragging,.gcard.dragging{opacity:.4;transform:scale(.98)}
+  .memo-note[draggable="true"],.mgoal-card[draggable="true"]{cursor:grab}
+  .memo-note[draggable="true"]:active,.mgoal-card[draggable="true"]:active{cursor:grabbing}
+  .gc-drag{display:inline-flex;align-items:center;color:var(--ink-4);cursor:grab;flex:0 0 auto}
+  .gc-drag:active{cursor:grabbing}
+  .gc-drag .mi{font-size:16px}
+  .gc-drag:hover{color:var(--point)}
   .mgc-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
   .mgc-head .mgc-ic{width:30px;height:30px;border-radius:8px;background:var(--point-soft);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
   .mgc-head .mgc-ic .mi{font-size:16px;color:var(--point)}
@@ -1665,7 +1673,7 @@
         } else {
           foot=`<div class="mgc-foot"><div class="mgc-val">${g.current}<small>/${g.target}</small></div><div class="mgc-ctrl"><button onclick="stepMgoal(${g.id},-1)">−</button><button onclick="stepMgoal(${g.id},1)">+</button></div></div>`;
         }
-        return `<div class="mgoal-card">
+        return `<div class="mgoal-card" data-id="${g.id}">
           <div class="mgc-head">
             <div class="mgc-ic"><span class="mi">${g.icon||mgIconFor[g.type]}</span></div>
             <div class="mgc-t"><div class="mgc-nm">${escapeHtml(g.title)}</div><div class="mgc-type">${mgTypeLabel[g.type]}${g.type==='time'&&g.category?' · '+escapeHtml(g.category):''}</div></div>
@@ -1675,6 +1683,7 @@
           ${foot}
         </div>`;
       }).join('');
+      enableDragSort(list, '.mgoal-card', ids=>{ if(moa.mgoal.reorder) moa.mgoal.reorder(ids); });
     }
   }
 
@@ -1897,8 +1906,9 @@
     if(!grid) return;
     if(!goals.length){ grid.innerHTML='<div class="goal-empty">아직 연간 목표가 없어요. "목표 추가"로 시작해보세요.</div>'; return; }
     grid.innerHTML=goals.map(g=>`
-      <div class="card gcard">
+      <div class="card gcard" data-id="${g.id}">
         <div class="gc-head">
+          <span class="gc-drag" title="드래그해서 순서 변경"><span class="mi">drag_indicator</span></span>
           <div class="gt">${escapeHtml(g.title)}</div>
           <div class="gc-pct">${g.pct}%</div>
           <button class="gc-del" onclick="delGoal(${g.id})"><span class="mi">delete</span></button>
@@ -1919,6 +1929,7 @@
           </div>
         </div>
       </div>`).join('');
+    enableDragSort(grid, '.gcard', ids=>{ if(moa.goal.reorder) moa.goal.reorder(ids); }, '.gc-drag');
   }
   async function toggleMs(id){ if(!_todoBridge)return; await moa.goal.toggleMilestone(id); await renderGoals(); }
   async function delMs(id){ if(!_todoBridge)return; await moa.goal.removeMilestone(id); await renderGoals(); }
@@ -1974,12 +1985,16 @@
       board.innerHTML='<div class="memo-empty">'+(memos.length?'이 태그의 메모가 없어요.':'아직 메모가 없어요. "새 메모"로 시작해보세요.')+'</div>';
     } else {
       board.innerHTML=shown.map((m,i)=>`
-        <div class="memo-note ${i%2?'g2':''}" onclick="openMemo(${m.id})">
+        <div class="memo-note ${i%2?'g2':''}" data-id="${m.id}" onclick="openMemo(${m.id})">
           <button class="mn-arch" title="보관하기" onclick="event.stopPropagation();archiveMemo(${m.id})"><span class="mi">inventory_2</span></button>
           <div class="mn-title">${escapeHtml(m.title||'(제목 없음)')}</div>
           <div class="mn-body">${escapeHtml(m.body||'').replace(/\n/g,'<br>')}</div>
           <div class="mn-foot">${m.tag?`<span class="mtag">${escapeHtml(m.tag)}</span> · `:''}${fmtMemoDate(m.updated_at)}</div>
         </div>`).join('');
+      // 필터 없을 때만 드래그 순서 변경 허용
+      if(_memoFilter===null){
+        enableDragSort(board, '.memo-note', ids=>{ if(moa.memo.reorder) moa.memo.reorder(ids); });
+      }
     }
     await renderArchived();
   }
@@ -2401,6 +2416,60 @@
   }
 
   function escapeHtml(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  // ── 드래그앤드롭으로 순서 바꾸기 (범용) ──
+  // container 안의 [data-id] 자식들을 드래그 가능하게. 놓으면 onReorder(정렬된 id배열) 호출.
+  function enableDragSort(container, itemSelector, onReorder, handleSelector){
+    if(!container) return;
+    let dragEl=null;
+    container.querySelectorAll(itemSelector).forEach(item=>{
+      if(handleSelector){
+        // 핸들에서만 드래그 시작 (기본은 draggable 끔)
+        item.setAttribute('draggable','false');
+        const handle=item.querySelector(handleSelector);
+        if(handle){
+          handle.style.cursor='grab';
+          handle.addEventListener('mousedown', ()=>item.setAttribute('draggable','true'));
+          handle.addEventListener('mouseup', ()=>item.setAttribute('draggable','false'));
+        }
+      } else {
+        item.setAttribute('draggable','true');
+      }
+      item.addEventListener('dragstart', e=>{
+        dragEl=item; item.classList.add('dragging');
+        e.dataTransfer.effectAllowed='move';
+      });
+      item.addEventListener('dragend', ()=>{
+        item.classList.remove('dragging');
+        if(handleSelector) item.setAttribute('draggable','false');
+        dragEl=null;
+        const ids=[...container.querySelectorAll(itemSelector)].map(x=>Number(x.getAttribute('data-id')));
+        onReorder(ids);
+      });
+    });
+    container.addEventListener('dragover', e=>{
+      e.preventDefault();
+      if(!dragEl) return;
+      const after=getDragAfter(container, itemSelector, e.clientY, e.clientX);
+      if(after==null) container.appendChild(dragEl);
+      else container.insertBefore(dragEl, after);
+    });
+  }
+  // 마우스 위치 기준으로 어느 요소 앞에 넣을지 계산 (세로+가로 그리드 모두 대응)
+  function getDragAfter(container, itemSelector, y, x){
+    const els=[...container.querySelectorAll(itemSelector+':not(.dragging)')];
+    let closest=null, closestDist=Infinity;
+    els.forEach(el=>{
+      const box=el.getBoundingClientRect();
+      const cy=box.top+box.height/2, cx=box.left+box.width/2;
+      // 중심까지 거리 (마우스가 요소 중심보다 위/왼쪽이면 그 앞에 삽입)
+      if(y<cy || (Math.abs(y-cy)<box.height/2 && x<cx)){
+        const dist=Math.hypot(x-cx, y-cy);
+        if(dist<closestDist){ closestDist=dist; closest=el; }
+      }
+    });
+    return closest;
+  }
   function escapeAttr(s){ return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
   // 모달 바깥 클릭 시 닫기
