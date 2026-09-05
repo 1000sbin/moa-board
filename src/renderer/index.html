@@ -742,19 +742,15 @@
             <div class="card">
               <div class="ct"><span class="mi">timer</span> 워크 트래커 <span class="more" onclick="openRules()" style="cursor:pointer">프로그램 규칙 <span class="mi">settings</span></span></div>
               <div class="detect">
-                <div class="app-ic"><span class="mi fill">brush</span></div>
+                <div class="app-ic"><span class="mi fill">monitor</span></div>
                 <div class="di">
-                  <div class="now-app"><span class="dotlive"></span> CLIP STUDIO PAINT · 측정 중</div>
-                  <div class="cat">그림 작업</div>
+                  <div class="now-app"><span class="dotlive"></span> 측정 대기 중</div>
+                  <div class="cat">—</div>
                 </div>
                 <div class="rt"><div class="tm">0:00:00</div><div class="lb">오늘 누적</div><div class="lb2"></div></div>
               </div>
-              <div class="tlog">
-                <div class="r"><div class="rh"><b><span class="mi fill">brush</span>그림 작업</b><span>3h 20m</span></div><div class="bar"><i class="pt" style="width:80%"></i></div></div>
-                <div class="r"><div class="rh"><b><span class="mi fill">code</span>코딩</b><span>2h 05m</span></div><div class="bar"><i style="width:50%"></i></div></div>
-                <div class="r"><div class="rh"><b><span class="mi fill">draw</span>글/기획</b><span>1h 12m</span></div><div class="bar"><i style="width:29%"></i></div></div>
-              </div>
-              <div class="today-total"><span>오늘 총 작업 시간</span><b>6시간 37분</b></div>
+              <div class="tlog"></div>
+              <div class="today-total"><span>오늘 총 작업 시간</span><b>0시간 0분</b></div>
             </div>
           </div>
 
@@ -877,19 +873,15 @@
           <div class="mgoal-input" id="mgoalInput" style="display:none">
             <div class="mg-row">
               <button type="button" class="icon-pick-btn" id="mgIconBtn" onclick="openIconPicker(this, _mgPickedIcon, ic=>{ _mgPickedIcon=ic; document.querySelector('#mgIconBtn .mi').textContent=ic; })"><span class="mi">flag</span></button>
-              <input id="mgTitle" class="todo-input" placeholder="목표 이름 (예: 커미션 완료)" style="flex:1;min-width:120px">
+              <input id="mgTitle" class="todo-input" placeholder="목표 이름 (예: 이번 달 목표)" style="flex:1;min-width:120px">
               <select id="mgType" class="ev-field mg-type" onchange="onMgTypeChange()">
                 <option value="count">수치</option>
                 <option value="time">작업 시간</option>
                 <option value="check">체크</option>
               </select>
               <input id="mgTarget" type="number" class="ev-field mg-target" placeholder="목표값" min="1" value="10">
-              <select id="mgCategory" class="ev-field mg-cat" style="display:none">
-                <option value="그림 작업">그림 작업</option>
-                <option value="코딩">코딩</option>
-                <option value="글/기획">글/기획</option>
-                <option value="리서치">리서치</option>
-              </select>
+              <input id="mgCategory" class="ev-field mg-cat" style="display:none" placeholder="작업 분류" list="mgCatList" autocomplete="off">
+              <datalist id="mgCatList"></datalist>
               <button class="ev-cancel mg-btn" onclick="hideMgoalInput()">취소</button>
               <button class="ev-save mg-btn" onclick="saveMgoal()"><span id="mgSaveLabel">추가</span></button>
             </div>
@@ -935,7 +927,7 @@
         <div class="head"><div><h1>연간 목표</h1><div class="sub">올해의 큰 그림</div></div></div>
         <div class="year-label"><span class="mi">target</span> 연간 목표 <span class="more" onclick="showGoalInput()" style="cursor:pointer;margin-left:auto">목표 추가 <span class="mi">add</span></span></div>
         <div class="goal-input" id="goalInput" style="display:none">
-          <input id="goalTitle" class="todo-input" placeholder="목표 이름 (예: 굿즈메이커 정식 배포)">
+          <input id="goalTitle" class="todo-input" placeholder="목표 이름 (예: 올해의 큰 목표)">
           <input id="goalSub" class="todo-input" placeholder="한 줄 설명 (선택)">
           <div class="ev-actions">
             <button class="ev-cancel" onclick="hideGoalInput()">취소</button>
@@ -1144,8 +1136,8 @@
     if(!_todoBridge){
       // 브라우저 미리보기: 샘플 몇 개
       box.innerHTML = `
-        <div class="ti done"><div class="bx"><span class="mi">check</span></div><span>샘플: 채색 1차</span><span class="t-tag">커미션</span></div>
-        <div class="ti"><div class="bx"><span class="mi">check</span></div><span>샘플: 버그 수정</span><span class="t-tag">코딩</span></div>`;
+        <div class="ti done"><div class="bx"><span class="mi">check</span></div><span>샘플 할 일 (완료)</span></div>
+        <div class="ti"><div class="bx"><span class="mi">check</span></div><span>샘플 할 일</span></div>`;
       updateMilk(); return;
     }
     const todos = await moa.todo.list();
@@ -1487,7 +1479,7 @@
   async function renderDdays(){
     const box=document.getElementById('ddayList');
     if(!_todoBridge){
-      box.innerHTML=`<div class="dday"><div class="badge urgent">D-1</div><div class="di"><div class="n">샘플 마감</div><div class="d">내일</div></div><div class="tag">커미션</div></div>`;
+      box.innerHTML=`<div class="dday"><div class="badge urgent">D-1</div><div class="di"><div class="n">샘플 마감</div><div class="d">내일</div></div></div>`;
       return;
     }
     const dd=await moa.event.ddays();
@@ -1751,7 +1743,17 @@
     const target=document.getElementById('mgTarget');
     const hint=document.getElementById('mgHint');
     // 타입 바꾸면 아이콘도 기본값으로 (사용자가 이미 골랐으면 유지)
-    if(type==='time'){ catSel.style.display=''; target.style.display=''; target.placeholder='목표 시간'; hint.textContent='워크트래커에서 이 카테고리 작업시간이 자동 집계돼요.'; }
+    if(type==='time'){
+      catSel.style.display=''; target.style.display=''; target.placeholder='목표 시간';
+      hint.textContent='워크트래커에서 이 카테고리 작업시간이 자동 집계돼요.';
+      // 실제 워크트래커 카테고리로 자동완성 채우기
+      if(_todoBridge && moa.tracker && moa.tracker.categories){
+        moa.tracker.categories().then(cats=>{
+          const dl=document.getElementById('mgCatList');
+          if(dl) dl.innerHTML=(cats||[]).map(c=>`<option value="${escapeAttr(c)}">`).join('');
+        });
+      }
+    }
     else if(type==='check'){ catSel.style.display='none'; target.style.display='none'; hint.textContent='이번 달에 했는지 체크만 하는 목표예요.'; }
     else { catSel.style.display='none'; target.style.display=''; target.placeholder='목표값'; hint.textContent='목표 횟수를 정하고 직접 +/− 로 카운트해요.'; }
   }
@@ -2397,7 +2399,7 @@
   // ─────────────────────────────────────────────
   // 프로그램 규칙 편집 모달
   // ─────────────────────────────────────────────
-  let _categories = ['그림 작업','코딩','글/기획','리서치'];
+  let _categories = [];
 
   function openRules(){
     document.getElementById('rulesModal').classList.add('on');
@@ -2416,8 +2418,9 @@
 
   // 카테고리 select 옵션 생성 (기존 + 새로 입력)
   function catOptions(selected){
-    const opts = _categories.map(c=>`<option ${c===selected?'selected':''}>${c}</option>`).join('');
-    return opts + '<option value="__new__">+ 새 카테고리…</option>';
+    const first = _categories.length ? '' : '<option value="" disabled selected>카테고리 선택…</option>';
+    const opts = _categories.map(c=>`<option ${c===selected?'selected':''}>${escapeHtml(c)}</option>`).join('');
+    return first + opts + '<option value="__new__">+ 새 카테고리…</option>';
   }
 
   async function loadRunningApps(){
@@ -2425,7 +2428,7 @@
     const list = document.getElementById('runList');
     list.innerHTML = '<div class="run-empty">불러오는 중…</div>';
     _categories = await moa.tracker.categories();
-    if(!_categories || !_categories.length) _categories = ['그림 작업','코딩','글/기획','리서치'];
+    if(!_categories) _categories = [];
     const apps = await moa.tracker.runningApps();
     if(!apps.length){ list.innerHTML = '<div class="run-empty">감지된 창이 없어요. 프로그램을 켜고 새로고침 해보세요.</div>'; return; }
     list.innerHTML = apps.map((a,i)=>`
@@ -2436,7 +2439,7 @@
         </div>
         ${a.mappedCategory
           ? `<span class="ri-mapped">✓ ${escapeHtml(a.mappedCategory)}</span>`
-          : `<select id="cat_${i}" onchange="onCatChange(this)">${catOptions('그림 작업')}</select>
+          : `<select id="cat_${i}" onchange="onCatChange(this)">${catOptions('')}</select>
              <button class="ri-add" onclick="addFromRunning('${escapeAttr(a.process)}', ${i})"><span class="mi">add</span></button>`}
       </div>`).join('');
   }
