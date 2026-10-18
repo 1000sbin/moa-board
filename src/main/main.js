@@ -280,6 +280,18 @@ function registerIpc() {
       WHERE done=1 AND date(done_at) = ?
       ORDER BY done_at
     `).all(ymd));
+  // 특정 날짜의 체크리스트: 그날로 지정(due_date)됐거나 그날 완료(done_at)한 할 일 전부
+  ipcMain.handle('todo:onDate', (_e, ymd) =>
+    D().prepare(`
+      SELECT * FROM todo
+      WHERE date(due_date) = ?
+         OR (done=1 AND date(done_at) = ?)
+      ORDER BY done, sort_order, id
+    `).all(ymd, ymd));
+  // 특정 날짜로 지정해서 할 일 추가
+  ipcMain.handle('todo:addOn', (_e, t) =>
+    D().prepare('INSERT INTO todo (title,category,due_date) VALUES (?,?,?)')
+       .run(t.title, t.category || null, t.due_date || null).lastInsertRowid);
 
   // 일정 / D-day
   ipcMain.handle('event:list', (_e, month) => {

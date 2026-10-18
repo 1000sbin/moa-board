@@ -641,6 +641,24 @@
   .day-item .di-tag{font-size:9px;padding:2px 7px;border-radius:5px;color:var(--ink-3);background:var(--surface);border:1px solid var(--line)}
   .day-item .di-check{color:var(--ink-4);font-size:15px}
   .day-empty{font-size:11px;color:var(--ink-4);padding:8px 2px;text-align:center}
+  /* 날짜 모달 편집 */
+  .day-item .di-chk{width:17px;height:17px;border-radius:50%;border:1.5px solid var(--ink-4);flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:.12s}
+  .day-item .di-chk .mi{font-size:12px;opacity:0;color:#fff}
+  .day-item.done .di-chk{background:var(--point);border-color:var(--point)}
+  .day-item.done .di-chk .mi{opacity:1}
+  .day-item.done .di-title{color:var(--ink-4)}
+  .day-item .di-act{opacity:0;width:24px;height:24px;border:none;background:none;border-radius:6px;color:var(--ink-4);cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .day-item:hover .di-act{opacity:1}
+  .day-item .di-act:hover{background:var(--point-soft);color:var(--point)}
+  .day-item .di-act .mi{font-size:14px}
+  .day-item .di-title-edit{flex:1;font-family:var(--font);font-size:12px;border:1px solid var(--point);border-radius:5px;padding:3px 7px;background:var(--surface);color:var(--ink)}
+  .day-item .di-title-edit:focus{outline:none}
+  .day-add-row{display:flex;gap:6px;margin-top:8px;align-items:center}
+  .day-add-row .todo-input{flex:1}
+  .day-add-row .todo-catsel{width:90px;flex:0 0 auto}
+  .day-add-btn{flex:0 0 auto;width:34px;height:34px;border:none;border-radius:8px;background:var(--point);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .day-add-btn:hover{filter:brightness(.96)}
+  .day-add-btn .mi{font-size:18px}
   .icon-pop.on{display:block}
   .icon-pop-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;max-height:200px;overflow-y:auto}
   .icon-opt{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-2);border:1.5px solid transparent}
@@ -995,11 +1013,17 @@
         <div class="x" onclick="closeDayModal()"><span class="mi">close</span></div>
       </div>
       <div class="modal-body">
-        <div class="day-sec-label"><span class="mi">calendar_month</span> 일정</div>
+        <div class="day-sec-label"><span class="mi">task_alt</span> 할 일</div>
+        <div id="dayTodos" class="day-list"></div>
+        <div class="day-add-row">
+          <input id="dayTodoInput" class="todo-input" placeholder="이 날 할 일 추가 후 Enter" onkeydown="if(event.key==='Enter')addDayTodo()">
+          <input id="dayTodoCat" class="todo-catsel" placeholder="분류" list="todoCatList" autocomplete="off">
+          <button class="day-add-btn" onclick="addDayTodo()"><span class="mi">add</span></button>
+        </div>
+
+        <div class="day-sec-label" style="margin-top:18px"><span class="mi">calendar_month</span> 일정</div>
         <div id="dayEvents" class="day-list"></div>
-        <div class="day-sec-label" style="margin-top:16px"><span class="mi">task_alt</span> 이날 완료한 할 일</div>
-        <div id="dayDoneTodos" class="day-list"></div>
-        <div class="ev-actions" style="margin-top:16px">
+        <div class="ev-actions" style="margin-top:10px">
           <button class="ev-save" onclick="addEventFromDay()"><span class="mi" style="font-size:16px">add</span> 이 날 일정 추가</button>
         </div>
       </div>
@@ -1373,45 +1397,115 @@
 
   // 날짜 상세 팝업: 그날 일정 + 완료한 할 일
   let _dayModalYmd = null;
+  let _dayCalDirty = false; // 모달에서 뭔가 바꿨으면 닫을 때 달력 새로고침
   async function openDayModal(ymd, events){
     _dayModalYmd = ymd;
+    _dayCalDirty = false;
     const [y,m,d] = ymd.split('-').map(Number);
     document.getElementById('dayModalTitle').textContent = `${m}월 ${d}일`;
-    // 일정
-    const evBox = document.getElementById('dayEvents');
-    if(events && events.length){
-      evBox.innerHTML = events.map(e=>`
-        <div class="day-item">
-          <span class="di-dot" style="${e.is_deadline?'background:var(--point)':''}"></span>
-          <span class="di-title">${escapeHtml(e.title)}</span>
-          ${e.end_date&&e.end_date>e.date?`<span class="di-tag">${fmtRange(e.date,e.end_date)}</span>`:''}
-          ${e.is_deadline?'<span class="di-tag">마감</span>':''}
-          ${e.time?`<span class="di-tag">${escapeHtml(e.time)}</span>`:''}
-        </div>`).join('');
-    } else {
-      evBox.innerHTML = '<div class="day-empty">일정이 없어요</div>';
-    }
-    // 그날 완료한 할 일
-    const doneBox = document.getElementById('dayDoneTodos');
-    doneBox.innerHTML = '<div class="day-empty">불러오는 중…</div>';
     document.getElementById('dayModal').classList.add('on');
-    if(_todoBridge && moa.todo.doneOn){
-      const done = await moa.todo.doneOn(ymd);
-      if(done && done.length){
-        doneBox.innerHTML = done.map(t=>`
-          <div class="day-item done">
-            <span class="mi di-check">check_circle</span>
-            <span class="di-title">${escapeHtml(t.title)}</span>
-            ${t.category?`<span class="di-tag">${escapeHtml(t.category)}</span>`:''}
-          </div>`).join('');
-      } else {
-        doneBox.innerHTML = '<div class="day-empty">이 날 완료한 할 일이 없어요</div>';
-      }
-    } else {
-      doneBox.innerHTML = '<div class="day-empty">앱에서 볼 수 있어요</div>';
-    }
+    await renderDayTodos();
+    await renderDayEvents();
   }
-  function closeDayModal(){ document.getElementById('dayModal').classList.remove('on'); }
+  // 그날 체크리스트 (지정된 할일 + 완료한 할일)
+  async function renderDayTodos(){
+    const box = document.getElementById('dayTodos');
+    const ymd = _dayModalYmd;
+    if(!_todoBridge || !moa.todo.onDate){ box.innerHTML='<div class="day-empty">앱에서 관리할 수 있어요</div>'; return; }
+    const todos = await moa.todo.onDate(ymd);
+    if(!todos || !todos.length){ box.innerHTML='<div class="day-empty">이 날 할 일이 없어요. 아래에서 추가해보세요.</div>'; return; }
+    box.innerHTML = todos.map(t=>`
+      <div class="day-item ${t.done?'done':''}" data-id="${t.id}">
+        <div class="di-chk" onclick="toggleDayTodo(${t.id})"><span class="mi">check</span></div>
+        <span class="di-title" ondblclick="editDayTodo(${t.id})">${escapeHtml(t.title)}</span>
+        ${t.category?`<span class="di-tag">${escapeHtml(t.category)}</span>`:''}
+        <button class="di-act" onclick="editDayTodo(${t.id})" title="수정"><span class="mi">edit</span></button>
+        <button class="di-act" onclick="delDayTodo(${t.id})" title="삭제"><span class="mi">close</span></button>
+      </div>`).join('');
+  }
+  // 그날 일정
+  async function renderDayEvents(){
+    const box = document.getElementById('dayEvents');
+    const ymd = _dayModalYmd;
+    if(!_todoBridge || !moa.event.list){ box.innerHTML='<div class="day-empty">앱에서 관리할 수 있어요</div>'; return; }
+    const month = ymd.slice(0,7);
+    const all = await moa.event.list(month);
+    // 그날 당일이거나 기간이 그날 걸치는 일정
+    const evs = (all||[]).filter(e=>{
+      if(e.date===ymd) return true;
+      if(e.end_date && e.date<=ymd && e.end_date>=ymd) return true;
+      return false;
+    });
+    if(!evs.length){ box.innerHTML='<div class="day-empty">일정이 없어요</div>'; return; }
+    box.innerHTML = evs.map(e=>`
+      <div class="day-item" data-id="${e.id}">
+        <span class="di-dot" style="${e.is_deadline?'background:var(--point)':''}"></span>
+        <span class="di-title">${escapeHtml(e.title)}</span>
+        ${e.end_date&&e.end_date>e.date?`<span class="di-tag">${fmtRange(e.date,e.end_date)}</span>`:''}
+        ${e.is_deadline?'<span class="di-tag">마감</span>':''}
+        ${e.time?`<span class="di-tag">${escapeHtml(e.time)}</span>`:''}
+        <button class="di-act" onclick="editDayEvent(${e.id})" title="수정"><span class="mi">edit</span></button>
+        <button class="di-act" onclick="delDayEvent(${e.id})" title="삭제"><span class="mi">close</span></button>
+      </div>`).join('');
+  }
+  // ── 할일 조작 ──
+  async function toggleDayTodo(id){
+    await moa.todo.toggle(id); _dayCalDirty=true;
+    await renderDayTodos();
+  }
+  async function addDayTodo(){
+    const inp=document.getElementById('dayTodoInput');
+    const title=inp.value.trim();
+    if(!title) return;
+    const cat=document.getElementById('dayTodoCat').value || null;
+    await moa.todo.addOn({ title, category:cat, due_date:_dayModalYmd });
+    inp.value=''; document.getElementById('dayTodoCat').value='';
+    _dayCalDirty=true;
+    await renderDayTodos(); inp.focus();
+  }
+  async function delDayTodo(id){
+    await moa.todo.remove(id); _dayCalDirty=true;
+    await renderDayTodos();
+  }
+  async function editDayTodo(id){
+    const row=document.querySelector(`#dayTodos .day-item[data-id="${id}"]`);
+    if(!row) return;
+    const titleEl=row.querySelector('.di-title');
+    if(!titleEl || row.querySelector('.di-title-edit')) return;
+    const old=titleEl.textContent;
+    // 현재 분류 가져오기 (태그에서)
+    const todos=await moa.todo.onDate(_dayModalYmd);
+    const cur=todos.find(t=>t.id===id);
+    const input=document.createElement('input');
+    input.className='di-title-edit'; input.value=old;
+    titleEl.replaceWith(input);
+    attachArrowConvert(input);
+    input.focus(); input.select();
+    let done=false;
+    const commit=async(save)=>{
+      if(done)return; done=true;
+      if(save){
+        const t=input.value.trim();
+        if(t && t!==old){ await moa.todo.update({ id, title:t, category:cur?cur.category:null }); _dayCalDirty=true; }
+      }
+      await renderDayTodos();
+    };
+    input.addEventListener('keydown',e=>{ if(e.key==='Enter')commit(true); else if(e.key==='Escape')commit(false); });
+    input.addEventListener('blur',()=>commit(true));
+  }
+  // ── 일정 조작 ── (수정은 기존 일정 폼 재사용)
+  function editDayEvent(id){
+    closeDayModal();
+    editEvent(id);
+  }
+  async function delDayEvent(id){
+    await moa.event.remove(id); _dayCalDirty=true;
+    await renderDayEvents();
+  }
+  function closeDayModal(){
+    document.getElementById('dayModal').classList.remove('on');
+    if(_dayCalDirty && _todoBridge){ renderCalendar(); renderTodos(); renderSchedule(); }
+  }
   function addEventFromDay(){
     const ymd = _dayModalYmd;
     closeDayModal();

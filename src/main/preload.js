@@ -48,6 +48,8 @@ contextBridge.exposeInMainWorld('moa', {
     update: (t) => ipcRenderer.invoke('todo:update', t),
     remove: (id) => ipcRenderer.invoke('todo:delete', id),
     doneOn: (ymd) => ipcRenderer.invoke('todo:doneOn', ymd),
+    onDate: (ymd) => ipcRenderer.invoke('todo:onDate', ymd),
+    addOn: (t) => ipcRenderer.invoke('todo:addOn', t),
   },
 
   // 일정
