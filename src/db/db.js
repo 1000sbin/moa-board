@@ -8,9 +8,13 @@ const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 
 let db = null;
+let _dbPath = null;
+let _userDataPath = null;
 
 function init(userDataPath) {
+  _userDataPath = userDataPath;
   const dbPath = path.join(userDataPath, 'moaboard.db');
+  _dbPath = dbPath;
   db = new DatabaseSync(dbPath);
   db.exec('PRAGMA journal_mode = WAL'); // 성능 + 안정성
   createTables();
@@ -18,6 +22,13 @@ function init(userDataPath) {
   seedDefaults();
   return db;
 }
+
+function getDbPath() { return _dbPath; }
+function getUserDataPath() { return _userDataPath; }
+// WAL 체크포인트: 백업 전에 호출하면 .db 파일 하나에 최신 데이터가 다 모임
+function checkpoint() { try { db.exec('PRAGMA wal_checkpoint(TRUNCATE)'); } catch (_) {} }
+// 현재 DB 연결 닫기 (가져오기로 파일 교체 시)
+function close() { try { db.close(); } catch (_) {} db = null; }
 
 // 기존 사용자 DB에 새 컬럼 등을 안전하게 추가
 function migrate() {
@@ -239,4 +250,4 @@ function get() {
   return db;
 }
 
-module.exports = { init, get };
+module.exports = { init, get, getDbPath, getUserDataPath, checkpoint, close };

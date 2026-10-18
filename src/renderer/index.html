@@ -77,6 +77,17 @@
   .mode-btn:hover{border-color:var(--ink-4);color:var(--ink-2)}
   .mode-btn.on{background:var(--point-soft);border-color:var(--point);color:var(--point);font-weight:600}
   .color-label{font-size:10px;font-weight:600;color:var(--ink-4);letter-spacing:0.04em;text-transform:uppercase;padding:0 2px 7px}
+  .backup-box{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .backup-label{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:600;color:var(--ink-3);margin-bottom:8px}
+  .backup-label .mi{font-size:13px}
+  .backup-btns{display:flex;gap:5px}
+  .backup-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:3px;font-family:var(--font);font-size:10px;font-weight:600;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:7px;padding:7px 4px;cursor:pointer;transition:.12s}
+  .backup-btn:hover{border-color:var(--point);color:var(--point)}
+  .backup-btn .mi{font-size:13px}
+  .backup-btn.icon-only{flex:0 0 auto;width:32px;padding:7px 0}
+  .backup-status{font-size:9.5px;color:var(--ink-4);margin-top:7px;line-height:1.4}
+  .backup-status.ok{color:var(--point)}
+  .backup-status.err{color:#e05656}
   .ver-box{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
   .ver-row{display:flex;align-items:center;gap:8px}
   .ver-label{font-size:10.5px;color:var(--ink-3);flex:1}
@@ -711,6 +722,16 @@
         </div>
 
         <!-- 버전 + 업데이트 확인 -->
+        <div class="backup-box">
+          <div class="backup-label"><span class="mi">backup</span> 데이터 백업</div>
+          <div class="backup-btns">
+            <button class="backup-btn" onclick="exportBackup()" title="데이터를 파일로 내보내기"><span class="mi">download</span> 내보내기</button>
+            <button class="backup-btn" onclick="importBackup()" title="백업 파일에서 복원"><span class="mi">upload</span> 가져오기</button>
+            <button class="backup-btn icon-only" onclick="openBackupFolder()" title="자동 백업 폴더 열기"><span class="mi">folder_open</span></button>
+          </div>
+          <div class="backup-status" id="backupStatus">하루 1번 자동 백업돼요</div>
+        </div>
+
         <div class="ver-box">
           <div class="ver-row">
             <span class="ver-label">버전 <b id="appVer">–</b></span>
@@ -1992,6 +2013,36 @@
     el.textContent=text;
     el.className='ver-status'+(cls?' '+cls:'');
   }
+  // ── 데이터 백업/복원 ──
+  function setBackupStatus(text, cls){
+    const el=document.getElementById('backupStatus');
+    if(!el) return;
+    el.textContent=text; el.className='backup-status'+(cls?' '+cls:'');
+  }
+  async function exportBackup(){
+    if(!_todoBridge || !moa.backup){ setBackupStatus('앱에서만 백업할 수 있어요',''); return; }
+    setBackupStatus('내보내는 중…','');
+    try{
+      const r=await moa.backup.export();
+      if(r.ok) setBackupStatus('백업 파일을 저장했어요 ✓','ok');
+      else if(r.canceled) setBackupStatus('하루 1번 자동 백업돼요','');
+      else setBackupStatus('내보내기 실패: '+(r.message||''),'err');
+    }catch(e){ setBackupStatus('내보내기 실패: '+e,'err'); }
+  }
+  async function importBackup(){
+    if(!_todoBridge || !moa.backup){ setBackupStatus('앱에서만 복원할 수 있어요',''); return; }
+    try{
+      const r=await moa.backup.import();
+      // 성공 시 앱이 재시작되므로 여기 도달 안 함
+      if(r.canceled) setBackupStatus('하루 1번 자동 백업돼요','');
+      else if(!r.ok) setBackupStatus('가져오기 실패: '+(r.message||''),'err');
+    }catch(e){ setBackupStatus('가져오기 실패: '+e,'err'); }
+  }
+  async function openBackupFolder(){
+    if(!_todoBridge || !moa.backup){ setBackupStatus('앱에서만 열 수 있어요',''); return; }
+    await moa.backup.openFolder();
+  }
+
   async function checkUpdate(){
     if(!_todoBridge || !moa.update){ setVerStatus('앱에서만 확인할 수 있어요',''); return; }
     const btn=document.getElementById('verCheckBtn');

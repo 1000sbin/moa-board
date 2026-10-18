@@ -2,8 +2,9 @@
 // 모아보드 — Electron 메인 프로세스
 // 창 관리 · 트레이 상주 · 자동 시작 · IPC(DB 브릿지)
 // ─────────────────────────────────────────────
-const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen, dialog, shell } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const db = require('../db/db');
 const tracker = require('./tracker');
 
@@ -157,6 +158,7 @@ function pushTracker(status) {
 
 app.whenReady().then(() => {
   db.init(app.getPath('userData'));
+  autoBackup();            // 하루 1회 자동 백업
   applyAutoLaunch();
   createWindow();
   createTray();
@@ -164,6 +166,31 @@ app.whenReady().then(() => {
   registerIpc();
   setupAutoUpdate();
 });
+
+// ── 자동 백업: 하루 1회, 최근 10개 유지 ──
+function backupsDir() {
+  const dir = path.join(db.getUserDataPath(), 'backups');
+  try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+  return dir;
+}
+function autoBackup() {
+  try {
+    db.checkpoint(); // WAL 내용을 본 파일에 반영
+    const dir = backupsDir();
+    const today = new Date().toLocaleDateString('sv'); // YYYY-MM-DD
+    const dest = path.join(dir, `moaboard-${today}.db`);
+    if (fs.existsSync(dest)) return; // 오늘 이미 백업됨
+    fs.copyFileSync(db.getDbPath(), dest);
+    // 오래된 백업 정리 (최근 10개만)
+    const files = fs.readdirSync(dir)
+      .filter(f => f.startsWith('moaboard-') && f.endsWith('.db'))
+      .sort();
+    while (files.length > 10) {
+      const old = files.shift();
+      try { fs.unlinkSync(path.join(dir, old)); } catch (_) {}
+    }
+  } catch (_) { /* 백업 실패는 앱 사용에 지장 없음 */ }
+}
 
 // ── 자동 업데이트 (깃허브 릴리스에서 새 버전 감지) ──
 let _autoUpdater = null;
@@ -504,6 +531,87 @@ function registerIpc() {
   // 앱 버전 + 자동 업데이트 수동 확인
   ipcMain.handle('app:version', () => app.getVersion());
   ipcMain.handle('app:isPackaged', () => app.isPackaged);
+
+  // ── 데이터 백업 / 복원 ──
+  // 내보내기: DB를 사용자가 고른 위치에 복사
+  ipcMain.handle('backup:export', async () => {
+    try {
+      db.checkpoint();
+      const today = new Date().toLocaleDateString('sv');
+      const { canceled, filePath } = await dialog.showSaveDialog(win, {
+        title: '데이터 내보내기',
+        defaultPath: `moaboard-backup-${today}.db`,
+        filters: [{ name: '모아보드 백업', extensions: ['db'] }],
+      });
+      if (canceled || !filePath) return { ok: false, canceled: true };
+      fs.copyFileSync(db.getDbPath(), filePath);
+      return { ok: true, path: filePath };
+    } catch (e) {
+      return { ok: false, message: String(e && e.message || e) };
+    }
+  });
+  // 가져오기: 고른 백업 파일로 현재 DB 교체 (현재 것은 안전 복사 후), 재시작 필요
+  ipcMain.handle('backup:import', async () => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+        title: '백업 파일 가져오기',
+        properties: ['openFile'],
+        filters: [{ name: '모아보드 백업', extensions: ['db'] }],
+      });
+      if (canceled || !filePaths || !filePaths.length) return { ok: false, canceled: true };
+      const src = filePaths[0];
+      // 간단 검증: SQLite 파일인지 헤더 확인
+      const head = fs.readFileSync(src).slice(0, 16).toString('utf8');
+      if (!head.startsWith('SQLite format 3')) {
+        return { ok: false, message: '모아보드 백업 파일이 아니에요.' };
+      }
+      // 확인 다이얼로그
+      const { response } = await dialog.showMessageBox(win, {
+        type: 'warning',
+        buttons: ['취소', '가져오기'],
+        defaultId: 1, cancelId: 0,
+        title: '데이터 가져오기',
+        message: '지금 데이터를 백업 파일로 교체할까요?',
+        detail: '현재 데이터는 backups 폴더에 자동 저장된 뒤 교체돼요. 적용하려면 앱이 다시 시작됩니다.',
+      });
+      if (response !== 1) return { ok: false, canceled: true };
+      // 현재 DB를 안전 복사
+      db.checkpoint();
+      const dir = backupsDir();
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      fs.copyFileSync(db.getDbPath(), path.join(dir, `before-import-${stamp}.db`));
+      // 연결 닫고 교체
+      db.close();
+      const dbPath = db.getDbPath();
+      // WAL/SHM 잔여 파일 제거 (교체 후 꼬임 방지)
+      for (const ext of ['-wal', '-shm']) { try { fs.unlinkSync(dbPath + ext); } catch (_) {} }
+      fs.copyFileSync(src, dbPath);
+      // 재시작
+      app.relaunch();
+      app.exit(0);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: String(e && e.message || e) };
+    }
+  });
+  // 백업 폴더 열기
+  ipcMain.handle('backup:openFolder', () => {
+    try { shell.openPath(backupsDir()); return { ok: true }; }
+    catch (e) { return { ok: false, message: String(e && e.message || e) }; }
+  });
+  // 자동 백업 목록 (최근 것)
+  ipcMain.handle('backup:list', () => {
+    try {
+      const dir = backupsDir();
+      return fs.readdirSync(dir)
+        .filter(f => f.endsWith('.db'))
+        .sort().reverse()
+        .map(f => {
+          const st = fs.statSync(path.join(dir, f));
+          return { name: f, size: st.size, mtime: st.mtimeMs };
+        });
+    } catch (_) { return []; }
+  });
   ipcMain.handle('update:check', async () => {
     if (!_autoUpdater) {
       // 개발 모드거나 업데이터 없음

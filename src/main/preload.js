@@ -23,6 +23,12 @@ contextBridge.exposeInMainWorld('moa', {
     check: () => ipcRenderer.invoke('update:check'),
     onStatus: (cb) => ipcRenderer.on('update:status', (_e, s) => cb(s)),
   },
+  backup: {
+    export: () => ipcRenderer.invoke('backup:export'),
+    import: () => ipcRenderer.invoke('backup:import'),
+    openFolder: () => ipcRenderer.invoke('backup:openFolder'),
+    list: () => ipcRenderer.invoke('backup:list'),
+  },
 
   // 워크 트래커
   tracker: {
