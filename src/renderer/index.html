@@ -642,6 +642,9 @@
   .cat-row .cat-del:hover{background:var(--point-soft);color:var(--point)}
   .cat-row .cat-del .mi{font-size:15px}
   .cat-empty{font-size:11px;color:var(--ink-4);text-align:center;padding:24px}
+  .goto-today-btn{font-size:10px;font-weight:600;color:var(--point);background:var(--point-soft);border:none;border-radius:6px;padding:3px 9px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
+  .goto-today-btn:hover{filter:brightness(.96)}
+  .goto-today-btn .mi{font-size:13px}
   .cat-manage-btn{font-size:10px;font-weight:600;color:var(--ink-3);background:none;border:1px solid var(--line);border-radius:6px;padding:3px 9px;cursor:pointer;display:inline-flex;align-items:center;gap:3px}
   .cat-manage-btn:hover{border-color:var(--point);color:var(--point)}
   .cat-manage-btn .mi{font-size:13px}
@@ -795,7 +798,7 @@
 
           <div class="dash-col">
             <div class="card">
-              <div class="ct"><span class="mi">task_alt</span> 오늘 할 일 <span class="more" id="todoCount">0/0</span> <button class="cat-manage-btn" style="margin-left:auto" onclick="openCatModal('todo')"><span class="mi">sell</span> 분류 정리</button></div>
+              <div class="ct"><span class="mi">task_alt</span> <span id="todoCardTitle">오늘 할 일</span> <span class="more" id="todoCount">0/0</span> <button class="goto-today-btn" id="gotoTodayBtn" onclick="goToToday()" style="display:none"><span class="mi">today</span> 오늘로</button> <button class="cat-manage-btn" style="margin-left:auto" onclick="openCatModal('todo')"><span class="mi">sell</span> 분류 정리</button></div>
               <div class="todo" id="todoList"></div>
               <datalist id="todoCatList"></datalist>
               <div class="todo-add" id="todoAddBtn" onclick="showTodoInput()"><span class="mi">add</span> 할 일 추가</div>
@@ -806,7 +809,7 @@
             </div>
 
             <div class="card">
-              <div class="ct"><span class="mi">schedule</span> 당일 일정 <span class="more" id="schedDate"></span> <button class="cat-manage-btn" style="margin-left:auto" onclick="openCatModal('event')"><span class="mi">sell</span> 분류 정리</button></div>
+              <div class="ct"><span class="mi">schedule</span> <span id="schedCardTitle">당일 일정</span> <span class="more" id="schedDate"></span> <button class="cat-manage-btn" style="margin-left:auto" onclick="openCatModal('event')"><span class="mi">sell</span> 분류 정리</button></div>
               <div class="sched" id="schedList"></div>
               <div class="todo-add" id="evAddBtn" onclick="showEventInput()"><span class="mi">add</span> 일정 추가</div>
               <div class="ev-input-wrap" id="evInputWrap" style="display:none">
@@ -1175,6 +1178,32 @@
 
   // ── 할 일: DB 연동 ──
   let _todoBridge = (typeof window !== 'undefined' && window.moa);
+  // 메인 '오늘 할 일/당일 일정'이 보고 있는 날짜 (null이면 오늘)
+  let _viewDate = null;
+  function viewDate(){ return _viewDate || todayStr(); }
+  function isViewToday(){ return viewDate() === todayStr(); }
+  // 날짜 선택 → 메인 카드를 그날로 전환
+  async function setViewDate(ymd){
+    _viewDate = (ymd === todayStr()) ? null : ymd;
+    updateDateHeaders();
+    await renderTodos();
+    await renderSchedule();
+    // 메인 탭으로 이동 + 스크롤 위로 (달력에서 눌렀을 때 바로 보이게)
+    const mainNav = document.querySelector('.nav');
+    if(mainNav && !document.getElementById('page-main').classList.contains('on')) go('main', mainNav);
+  }
+  function goToToday(){ setViewDate(todayStr()); }
+  // 카드 제목/버튼을 현재 보는 날짜에 맞게
+  function updateDateHeaders(){
+    const todayTitle = isViewToday();
+    const d = viewDate();
+    const titleTodo = document.getElementById('todoCardTitle');
+    const titleSched = document.getElementById('schedCardTitle');
+    const btn = document.getElementById('gotoTodayBtn');
+    if(titleTodo) titleTodo.textContent = todayTitle ? '오늘 할 일' : `${fmtDateK(d)} 할 일`;
+    if(titleSched) titleSched.textContent = todayTitle ? '당일 일정' : `${fmtDateK(d)} 일정`;
+    if(btn) btn.style.display = todayTitle ? 'none' : 'inline-flex';
+  }
 
   async function renderTodos(){
     const box = document.getElementById('todoList');
@@ -1185,7 +1214,10 @@
         <div class="ti"><div class="bx"><span class="mi">check</span></div><span>샘플 할 일</span></div>`;
       updateMilk(); return;
     }
-    const todos = await moa.todo.list();
+    // 오늘이면 기존 목록(미완료 전부+오늘 완료, 이월 포함), 다른 날이면 그날 체크리스트
+    const todos = isViewToday()
+      ? await moa.todo.list()
+      : (await moa.todo.onDate(viewDate())).map(t=>({ ...t, carried:false }));
     // 카테고리 자동완성 목록 채우기 (기존 할일 카테고리 + 트래커 카테고리)
     try {
       const dl = document.getElementById('todoCatList');
@@ -1303,7 +1335,9 @@
     if(!title) return;
     const category=document.getElementById('todoCat').value || null;
     if(_todoBridge){
-      await moa.todo.add({ title, category });
+      // 다른 날짜를 보고 있으면 그 날짜로 지정해서 추가
+      if(isViewToday()) await moa.todo.add({ title, category });
+      else await moa.todo.addOn({ title, category, due_date:viewDate() });
       e.target.value='';
       await renderTodos();
       // 연속 입력 편하게 입력창 유지, 포커스만
@@ -1406,7 +1440,7 @@
       el.innerHTML=html;
       if(!c.out && c.ymd){
         el.style.cursor='pointer';
-        el.onclick=()=>{ openDayModal(c.ymd, c.events||[]); };
+        el.onclick=()=>{ setViewDate(c.ymd); };
       }
       frag.appendChild(el);
     });
@@ -1544,7 +1578,7 @@
   async function renderSchedule(){
     const list=document.getElementById('schedList');
     const dateLbl=document.getElementById('schedDate');
-    const today=todayStr();
+    const today=viewDate();
     if(dateLbl) dateLbl.textContent=fmtDateK(today);
     if(!_todoBridge){
       list.innerHTML=`<div class="sc"><div class="sc-time">13:00</div><div class="sc-line"><i class="now"></i></div><div class="sc-body"><div class="sc-t">샘플 일정</div><div class="sc-s">진행 중</div></div></div>`;
@@ -1571,7 +1605,7 @@
       if(e.end_date && e.date<=today && e.end_date>=today) return true;
       return false;
     }).sort((a,b)=>((a.time||'99:99')>(b.time||'99:99')?1:-1));
-    if(!todays.length){ list.innerHTML='<div class="todo-empty">오늘 일정이 없어요.</div>'; return; }
+    if(!todays.length){ list.innerHTML=`<div class="todo-empty">${isViewToday()?'오늘':'이 날'} 일정이 없어요.</div>`; return; }
     const nowHM=new Date().toTimeString().slice(0,5);
     list.innerHTML=todays.map(e=>{
       const isNow = e.time && e.time<=nowHM;
@@ -1621,7 +1655,7 @@
     document.getElementById('evSaveLabel') && (document.getElementById('evSaveLabel').textContent='추가');
     document.getElementById('evAddBtn').style.display='none';
     document.getElementById('evInputWrap').style.display='flex';
-    document.getElementById('evDate').value=todayStr();
+    document.getElementById('evDate').value=viewDate();
     document.getElementById('evTitle').focus();
   }
   function hideEventInput(){
