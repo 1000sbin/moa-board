@@ -264,20 +264,22 @@ function registerIpc() {
        .run(r.match_type || 'process', r.pattern, r.category, r.icon || 'apps').lastInsertRowid);
   ipcMain.handle('rules:delete', (_e, id) => D().prepare('DELETE FROM app_rule WHERE id=?').run(id).changes);
 
-  // 할 일
+  // 할 일 (메인 '오늘 할 일')
   ipcMain.handle('todo:list', () => {
-    // 미완료 전부 + 완료된 것 중 '오늘 완료'만 표시
+    // 표시 대상:
+    //  - 미완료 중: 날짜 없는 상시 할 일 + 오늘 이하로 지정된 것 (미래 지정은 그날 가서 표시)
+    //  - 완료 중: 오늘 완료한 것
     const rows = D().prepare(`
       SELECT * FROM todo
-      WHERE done = 0
+      WHERE (done = 0 AND (due_date IS NULL OR due_date = '' OR date(due_date) <= date('now','localtime')))
          OR (done = 1 AND date(done_at) = date('now','localtime'))
       ORDER BY done, sort_order, id
     `).all();
     const today = new Date().toLocaleDateString('sv'); // YYYY-MM-DD
     return rows.map(t => {
-      // 이월: 미완료인데 만든 날짜가 오늘보다 이전
-      const created = (t.created_at || '').slice(0, 10);
-      const carried = !t.done && created && created < today;
+      // 이월: 미완료인데 지정일(없으면 만든 날)이 오늘보다 이전
+      const base = (t.due_date || (t.created_at || '').slice(0, 10)) || '';
+      const carried = !t.done && base && base < today;
       return { ...t, carried };
     });
   });
