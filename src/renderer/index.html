@@ -1218,15 +1218,15 @@
     const todos = isViewToday()
       ? await moa.todo.list()
       : (await moa.todo.onDate(viewDate())).map(t=>({ ...t, carried:false }));
-    // 카테고리 자동완성 목록 채우기 (기존 할일 카테고리 + 트래커 카테고리)
+    // 분류 자동완성: 실제 할 일에 쓰인 분류만 (분류 정리 모달과 동일한 소스)
     try {
       const dl = document.getElementById('todoCatList');
       if(dl){
         const cats = new Set();
-        todos.forEach(t=>{ if(t.category) cats.add(t.category); });
-        if(moa.tracker && moa.tracker.categories){
-          const tc = await moa.tracker.categories();
-          (tc||[]).forEach(c=>cats.add(c));
+        if(moa.category && moa.category.list){
+          (await moa.category.list('todo')||[]).forEach(c=>{ if(c.name) cats.add(c.name); });
+        } else {
+          todos.forEach(t=>{ if(t.category) cats.add(t.category); });
         }
         dl.innerHTML = [...cats].map(c=>`<option value="${escapeAttr(c)}">`).join('');
       }
@@ -1585,16 +1585,16 @@
       return;
     }
     const all=await moa.event.list(today.slice(0,7));
-    // 분류 자동완성 목록 채우기 (기존 일정 + 트래커 카테고리)
+    // 분류 자동완성: 실제 일정에 쓰인 분류만 (분류 정리 모달과 동일한 소스)
     try {
       const dl=document.getElementById('evCatList');
       if(dl){
         const cats=new Set();
-        // 그달 일정뿐 아니라 전체 일정에서 수집
-        const every=await moa.event.list();
-        (every||[]).forEach(e=>{ if(e.category) cats.add(e.category); });
-        if(moa.tracker && moa.tracker.categories){
-          (await moa.tracker.categories()||[]).forEach(c=>cats.add(c));
+        if(moa.category && moa.category.list){
+          (await moa.category.list('event')||[]).forEach(c=>{ if(c.name) cats.add(c.name); });
+        } else {
+          const every=await moa.event.list();
+          (every||[]).forEach(e=>{ if(e.category) cats.add(e.category); });
         }
         dl.innerHTML=[...cats].map(c=>`<option value="${escapeAttr(c)}">`).join('');
       }
